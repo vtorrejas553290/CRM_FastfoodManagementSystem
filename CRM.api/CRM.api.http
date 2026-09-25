@@ -1,0 +1,220 @@
+@CRM.api_HostAddress = http://localhost:5299
+
+### ==================== PHASE 1: DATA COLLECTION ====================
+
+### 1. Create SUPERADMIN role
+POST {{CRM.api_HostAddress}}/roles
+Content-Type: application/json
+
+{
+  "roleCode": "SUPERADMIN",
+  "roleName": "Super Administrator",
+  "description": "Full access",
+  "isActive": true
+}
+
+### 2. Create ADMIN role
+POST {{CRM.api_HostAddress}}/roles
+Content-Type: application/json
+
+{
+  "roleCode": "ADMIN",
+  "roleName": "Administrator",
+  "description": "Business administration",
+  "isActive": true
+}
+
+### 3. Create MANAGER role
+POST {{CRM.api_HostAddress}}/roles
+Content-Type: application/json
+
+{
+  "roleCode": "MANAGER",
+  "roleName": "Manager",
+  "description": "Operations manager",
+  "isActive": true
+}
+
+### 4. Create STAFF role
+POST {{CRM.api_HostAddress}}/roles
+Content-Type: application/json
+
+{
+  "roleCode": "STAFF",
+  "roleName": "Staff",
+  "description": "Cashier / crew",
+  "isActive": true
+}
+
+### 5. List Roles
+GET {{CRM.api_HostAddress}}/roles
+Accept: application/json
+
+### 6. Register superadmin
+POST {{CRM.api_HostAddress}}/auth/register
+Content-Type: application/json
+
+{
+  "username": "superadmin",
+  "password": "Admin@123",
+  "fullName": "Super Admin",
+  "email": "superadmin@crm.local",
+  "contactNumber": "09170000001",
+  "roleId":1
+}
+
+### 7. Register admin
+POST {{CRM.api_HostAddress}}/auth/register
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "password": "Admin@123",
+  "fullName": "Vincent Admin",
+  "email": "admin@crm.local",
+  "contactNumber": "09170000002",
+  "roleId": 2
+}
+
+### 8. Register manager
+POST {{CRM.api_HostAddress}}/auth/register
+Content-Type: application/json
+
+{
+  "username": "manager",
+  "password": "Manager@123",
+  "fullName": "Vincent Manager",
+  "email": "manager@crm.local",
+  "contactNumber": "09170000003",
+  "roleId": 3
+}
+
+### 9. Register staff
+POST {{CRM.api_HostAddress}}/auth/register
+Content-Type: application/json
+
+{
+  "username": "staff",
+  "password": "Staff@123",
+  "fullName": "Vincent Staff",
+  "email": "staff@crm.local",
+  "contactNumber": "09170000004",
+  "roleId": 4
+}
+
+### 10. List Users
+GET {{CRM.api_HostAddress}}/users
+Accept: application/json
+
+### 11. Create Terms v1.0
+POST {{CRM.api_HostAddress}}/terms
+Content-Type: application/json
+
+{
+  "version": "v1.0",
+  "title": "Customer Data Privacy Terms",
+  "content": "By registering, you agree that your personal data will be stored and processed in accordance with the Data Privacy Act of 2012.",
+  "isActive": true,
+  "effectiveFrom": "2026-09-13T00:00:00",
+  "createdAt": "2026-09-13T00:00:00"
+}
+
+### 12. Get Active Terms
+GET {{CRM.api_HostAddress}}/terms/active
+Accept: application/json
+
+### 13. Register Customer - Juan
+POST {{CRM.api_HostAddress}}/customers
+Content-Type: application/json
+
+{
+  "customerCode": "CUST001",
+  "customerName": "Juan Dela Cruz",
+  "contactNumber": "09171234567",
+  "emailAddress": "juan@example.com",
+  "address": "Davao City",
+  "birthday": "1995-05-12T00:00:00",
+  "isActive": true,
+  "createdAt": "2026-09-13T09:15:00"
+}
+
+### 14. Register Customer - Maria
+POST {{CRM.api_HostAddress}}/customers
+Content-Type: application/json
+
+{
+  "customerCode": "CUST002",
+  "customerName": "Maria Santos",
+  "contactNumber": "09181234567",
+  "emailAddress": "maria@example.com",
+  "address": "Cebu City",
+  "isActive": true,
+  "createdAt": "2026-09-13T09:20:00"
+}
+
+### 15. List Customers
+GET {{CRM.api_HostAddress}}/customers
+Accept: application/json
+
+### 16. Juan accepts terms
+POST {{CRM.api_HostAddress}}/terms/1/accept/1
+Content-Type: application/json
+
+{
+  "ipAddress": "127.0.0.1"
+}
+
+### 17. Maria accepts terms
+POST {{CRM.api_HostAddress}}/terms/1/accept/2
+Content-Type: application/json
+
+{
+  "ipAddress": "127.0.0.1"
+}
+
+### 18. Feedback from Juan
+POST {{CRM.api_HostAddress}}/customers/1/feedback
+Content-Type: application/json
+
+{
+  "rating": 5,
+  "comments": "Fast service and delicious food!",
+  "category": "Service",
+  "status": "New"
+}
+
+### 19. Feedback from Maria
+POST {{CRM.api_HostAddress}}/customers/2/feedback
+Content-Type: application/json
+
+{
+  "rating": 4,
+  "comments": "Good food, could be faster.",
+  "category": "Speed",
+  "status": "New"
+}
+
+### 20. List All Feedback
+GET {{CRM.api_HostAddress}}/feedback
+Accept: application/json
+
+### Register superadmin
+POST {{CRM.api_HostAddress}}/auth/register
+Content-Type: application/json
+
+{
+  "username": "superadmin",
+  "password": "Admin@123",
+  "fullName": "Super Admin",
+  "email": "superadmin@crm.local",
+  "contactNumber": "09170000001",
+  "roleId": 1
+}
+
+### 21. Login test
+POST {{CRM.api_HostAddress}}/auth/login
+Content-Type: application/json
+{
+  "username": "superadmin",
+  "password": "Admin@123"
+}

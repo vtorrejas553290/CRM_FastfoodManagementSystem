@@ -1,0 +1,113 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Compile Update="Form1.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Forms\FrmActivityLogs.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Forms\FrmAdjustPoints.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Forms\FrmAdminTermsGate.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Forms\FrmBusinessIntelligence.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Forms\FrmCategoryEditor.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Forms\FrmComplaintDetail.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Forms\FrmComplaintEditor.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Forms\FrmComplaints.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Forms\FrmContactCustomer.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Forms\FrmCustomerList.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Forms\FrmCustomerRetention.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Forms\FrmFeedbackEntry.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Forms\FrmFeedbackList.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Forms\FrmFeedbackStatusEditor.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Forms\FrmInventoryManagement.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Forms\FrmLogin.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Forms\FrmMain.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Forms\FrmManagerDashboard.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Forms\FrmOrderConfirmDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Forms\FrmOrderDetail.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Forms\FrmOrderManagement.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Forms\FrmPaymentDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Forms\FrmPointsHistory.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Forms\FrmProductEditor.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Forms\FrmProductManagement.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Forms\FrmPromotionEditor.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Forms\FrmPromotions.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Forms\FrmRegisterCustomer.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Forms\FrmReports.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Forms\FrmSendEmail.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Forms\FrmTermsEditor.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Forms\FrmTermsViewer.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Forms\FrmUserEditor.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Forms\FrmUserManagement.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Forms\FrmViewTransactions.cs">
+      <SubType>Form</SubType>
+    </Compile>
+  </ItemGroup>
+</Project>
