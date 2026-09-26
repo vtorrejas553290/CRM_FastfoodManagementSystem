@@ -1,4 +1,5 @@
 ﻿using CRM.domain.Controllers;
+using CRM.domain.Entities;
 using CRM.domain.Models;
 using CRM.infrastructure;
 using Microsoft.EntityFrameworkCore;
@@ -13,7 +14,8 @@ public class TransactionController : ITransactionController
 
         var search = (filter.Search ?? "").Trim().ToLower();
         var method = filter.Method ?? "All";
-        var dateRange = filter.DateRange ?? "All";
+        var from = filter.FromDate;
+        var to = filter.ToDate;
 
         var query = db.Transactions
             .Include(x => x.Order!)
@@ -23,14 +25,10 @@ public class TransactionController : ITransactionController
         if (method != "All")
             query = query.Where(x => x.PaymentMethod == method);
 
-        var now = filter.Now;
-
-        if (dateRange == "Today")
-            query = query.Where(x => x.PaidAt.Date == now.Date);
-        else if (dateRange == "Last 7 Days")
-            query = query.Where(x => x.PaidAt >= now.AddDays(-7));
-        else if (dateRange == "Last 30 Days")
-            query = query.Where(x => x.PaidAt >= now.AddDays(-30));
+        if (from != null)
+            query = query.Where(x => x.PaidAt >= from);
+        if (to != null)
+            query = query.Where(x => x.PaidAt <= to);
 
         return query
             .Where(x =>
@@ -38,6 +36,7 @@ public class TransactionController : ITransactionController
                 (x.Order != null && x.Order.OrderCode.ToLower().Contains(search)) ||
                 (x.Order!.Customer != null && x.Order.Customer.CustomerName.ToLower().Contains(search)))
             .OrderByDescending(x => x.PaidAt)
+            .Take(1000)
             .Select(x => new TransactionRow
             {
                 TransactionId = x.TransactionId,

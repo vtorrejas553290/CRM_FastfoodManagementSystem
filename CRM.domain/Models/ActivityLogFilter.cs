@@ -1,9 +1,10 @@
 ﻿namespace CRM.domain.Models;
 
-public class TransactionFilter
+public class ActivityLogFilter
 {
     public string Search { get; set; } = "";
-    public string Method { get; set; } = "All";
+
+    public string Action { get; set; } = "All";
 
     /// <summary>
     /// "All" | "Today" | "Last 7 Days" | "Last 30 Days" | "Custom".
