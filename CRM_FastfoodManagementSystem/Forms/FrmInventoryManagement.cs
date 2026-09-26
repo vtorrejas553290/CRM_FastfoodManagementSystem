@@ -1,27 +1,17 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using CRM.api.Controllers;
+using CRM.domain.Controllers;
+using CRM.domain.Models;
+using CRM.infrastructure;
+using Microsoft.EntityFrameworkCore;
 
 namespace CRM.winForms.Forms;
 
 public partial class FrmInventoryManagement : Form
 {
-    // ---- Pagination state ----
+    private readonly IInventoryController _controller = new InventoryController();
+
     private List<InventoryRow> _allRows = new();
     private int _currentPage = 1;
-
-    /// <summary>
-    /// Snapshot row type. Needed because we paginate client-side after
-    /// running the EF query, so we can't use an anonymous type in a field.
-    /// </summary>
-    private class InventoryRow
-    {
-        public int InventoryId { get; set; }
-        public string ProductCode { get; set; } = "";
-        public string Product { get; set; } = "";
-        public decimal QuantityOnHand { get; set; }
-        public decimal ReorderLevel { get; set; }
-        public string Alert { get; set; } = "";
-        public DateTime LastUpdatedAt { get; set; }
-    }
 
     public FrmInventoryManagement()
     {
@@ -39,21 +29,20 @@ public partial class FrmInventoryManagement : Form
             LoadInventory();
         };
 
-        btnRefresh.Click += (_, __) => LoadInventory();
+       
 
         txtSearch.TextChanged += (_, __) =>
         {
-            _currentPage = 1;     // reset page on new search
+            _currentPage = 1;
             LoadInventory();
         };
 
         chkShowArchived.CheckedChanged += (_, __) =>
         {
-            _currentPage = 1;     // reset page on archive toggle
+            _currentPage = 1;
             LoadInventory();
         };
 
-        // Pagination events
         cmbPageSize.SelectedIndexChanged += (_, __) =>
         {
             _currentPage = 1;
@@ -73,7 +62,7 @@ public partial class FrmInventoryManagement : Form
         pnlPager.BackColor = AppTheme.Surface;
 
         AppTheme.StyleInput(txtSearch);
-        AppTheme.StyleSecondaryButton(btnRefresh);
+        
         AppTheme.StyleLabel(lblStatus);
         AppTheme.StyleGrid(gridInventory);
 
@@ -96,55 +85,26 @@ public partial class FrmInventoryManagement : Form
     {
         cmbPageSize.Items.Clear();
         cmbPageSize.Items.AddRange(new object[] { "10", "25", "50", "100", "All" });
-        cmbPageSize.SelectedIndex = 1;   // default 25
+        cmbPageSize.SelectedIndex = 1;
     }
-
-    // ============================================================
-    //  DATA LOAD
-    // ============================================================
 
     private void LoadInventory()
     {
         try
         {
-            using var db = AppServices.CreateTenantContext();
-            var search = txtSearch.Text.Trim().ToLower();
-            bool showArchived = chkShowArchived.Checked;
+            var filter = new InventoryFilter
+            {
+                Search = txtSearch.Text.Trim().ToLower(),
+                ShowArchived = chkShowArchived.Checked
+            };
 
-            var query = db.Inventories
-                .Include(x => x.Product)
-                .AsNoTracking()
-                .AsQueryable();
+            _allRows = _controller.GetInventory(filter);
 
-            if (showArchived)
-                query = query.Where(x => x.Product != null && !x.Product.IsActive);
-            else
-                query = query.Where(x => x.Product != null && x.Product.IsActive);
-
-            _allRows = query
-                .Where(x => string.IsNullOrWhiteSpace(search) ||
-                            x.Product!.ProductName.ToLower().Contains(search) ||
-                            x.Product.ProductCode.ToLower().Contains(search))
-                .OrderBy(x => x.Product!.ProductName)
-                .Select(x => new InventoryRow
-                {
-                    InventoryId = x.InventoryId,
-                    ProductCode = x.Product!.ProductCode,
-                    Product = x.Product.ProductName,
-                    QuantityOnHand = x.QuantityOnHand,
-                    ReorderLevel = x.ReorderLevel,
-                    Alert = x.QuantityOnHand <= x.ReorderLevel ? "⚠ REORDER" : "OK",
-                    LastUpdatedAt = x.LastUpdatedAt
-                })
-                .ToList();
-
-            // If current page exceeds new total pages, clamp
             if (_currentPage > TotalPages) _currentPage = Math.Max(1, TotalPages);
 
             RenderPage();
 
-            // Status label
-            if (showArchived)
+            if (filter.ShowArchived)
             {
                 lblStatus.ForeColor = AppTheme.TextSecondary;
                 lblStatus.Text = $"{_allRows.Count} archived inventory item(s).";
@@ -161,10 +121,6 @@ public partial class FrmInventoryManagement : Form
             MessageBox.Show(ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
-
-    // ============================================================
-    //  PAGINATION
-    // ============================================================
 
     private int PageSize
     {
@@ -221,29 +177,23 @@ public partial class FrmInventoryManagement : Form
         }).ToList();
 
         BuildActionColumns();
+        StyleColumns();
 
-        // Update page-info label
         int total = TotalPages;
         lblPageInfo.Text = $"Page {_currentPage} of {total}";
 
-        // Update showing label
         int first = _allRows.Count == 0 ? 0 : ((_currentPage - 1) * (size == int.MaxValue ? _allRows.Count : size)) + 1;
         int last = size == int.MaxValue
             ? _allRows.Count
             : Math.Min(_currentPage * size, _allRows.Count);
         lblShowing.Text = $"Showing {first}–{last} of {_allRows.Count}";
 
-        // Enable/disable nav buttons
         bool multiPage = total > 1;
         btnFirstPage.Enabled = multiPage && _currentPage > 1;
         btnPrevPage.Enabled = multiPage && _currentPage > 1;
         btnNextPage.Enabled = multiPage && _currentPage < total;
         btnLastPage.Enabled = multiPage && _currentPage < total;
     }
-
-    // ============================================================
-    //  ACTION COLUMNS
-    // ============================================================
 
     private void BuildActionColumns()
     {
@@ -283,6 +233,83 @@ public partial class FrmInventoryManagement : Form
         gridInventory.CellContentClick += GridInventory_CellContentClick;
     }
 
+    private void StyleColumns()
+    {
+        var grid = gridInventory;
+
+        if (grid.Columns.Contains("InventoryId")) grid.Columns["InventoryId"].Visible = false;
+
+        SetColumnFixed("ProductCode", "Code", 120, DataGridViewContentAlignment.MiddleLeft);
+        SetColumnFixed("QuantityOnHand", "Qty On Hand", 130, DataGridViewContentAlignment.MiddleRight);
+        SetColumnFixed("ReorderLevel", "Reorder Level", 130, DataGridViewContentAlignment.MiddleRight);
+        SetColumnFixed("Alert", "Alert", 120, DataGridViewContentAlignment.MiddleCenter);
+        SetColumnFixed("LastUpdatedAt", "Last Updated", 160, DataGridViewContentAlignment.MiddleCenter);
+
+        SetColumnFill("Product", "Product", 100, 180, DataGridViewContentAlignment.MiddleLeft);
+
+        if (grid.Columns.Contains("QuantityOnHand")) grid.Columns["QuantityOnHand"].DefaultCellStyle.Format = "N2";
+        if (grid.Columns.Contains("ReorderLevel")) grid.Columns["ReorderLevel"].DefaultCellStyle.Format = "N2";
+        if (grid.Columns.Contains("LastUpdatedAt")) grid.Columns["LastUpdatedAt"].DefaultCellStyle.Format = "yyyy-MM-dd HH:mm";
+
+        foreach (var name in new[] { "colRestock", "colArchive", "colUnarchive" })
+        {
+            if (!grid.Columns.Contains(name)) continue;
+            var c = grid.Columns[name];
+            c.AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
+            c.Resizable = DataGridViewTriState.False;
+            c.DefaultCellStyle.Padding = new Padding(0);
+            c.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+            c.DefaultCellStyle.Font = new Font("Segoe UI", 9F);
+            c.DefaultCellStyle.ForeColor = AppTheme.TextOnDark;
+            c.DefaultCellStyle.SelectionForeColor = AppTheme.TextOnDark;
+            c.HeaderCell.Style.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+            c.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
+            c.MinimumWidth = c.Width;
+        }
+
+        grid.DefaultCellStyle.WrapMode = DataGridViewTriState.True;
+        grid.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCells;
+
+        grid.CellFormatting -= Grid_CellFormatting;
+        grid.CellFormatting += Grid_CellFormatting;
+    }
+
+    private void SetColumnFixed(string name, string header, int width, DataGridViewContentAlignment align)
+    {
+        if (!gridInventory.Columns.Contains(name)) return;
+        var c = gridInventory.Columns[name];
+        c.HeaderText = header;
+        c.AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
+        c.Width = width;
+        c.MinimumWidth = width;
+        c.DefaultCellStyle.Alignment = align;
+    }
+
+    private void SetColumnFill(string name, string header, int fillWeight, int minWidth, DataGridViewContentAlignment align)
+    {
+        if (!gridInventory.Columns.Contains(name)) return;
+        var c = gridInventory.Columns[name];
+        c.HeaderText = header;
+        c.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
+        c.FillWeight = fillWeight;
+        c.MinimumWidth = minWidth;
+        c.DefaultCellStyle.Alignment = align;
+    }
+
+    private void Grid_CellFormatting(object? sender, DataGridViewCellFormattingEventArgs e)
+    {
+        if (e.RowIndex < 0 || e.RowIndex >= gridInventory.Rows.Count) return;
+        var row = gridInventory.Rows[e.RowIndex];
+        if (row.DataBoundItem is null) return;
+        if (gridInventory.Columns[e.ColumnIndex].Name != "Alert") return;
+
+        var alert = row.Cells["Alert"]?.Value?.ToString() ?? "";
+        e.CellStyle.ForeColor = alert.StartsWith("⚠")
+            ? Color.FromArgb(190, 40, 40)
+            : Color.FromArgb(22, 130, 60);
+        e.CellStyle.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+    }
+
     private void GridInventory_CellContentClick(object? sender, DataGridViewCellEventArgs e)
     {
         if (e.RowIndex < 0) return;
@@ -303,10 +330,6 @@ public partial class FrmInventoryManagement : Form
         if (cell?.Value is null) return null;
         return Convert.ToInt32(cell.Value);
     }
-
-    // ============================================================
-    //  HANDLERS
-    // ============================================================
 
     private void HandleRestock(int rowIndex)
     {

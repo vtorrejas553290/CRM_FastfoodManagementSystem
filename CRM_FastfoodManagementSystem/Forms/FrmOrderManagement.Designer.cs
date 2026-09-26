@@ -12,7 +12,6 @@
         private System.Windows.Forms.ComboBox cmbCustomer;
         private System.Windows.Forms.Label lblOrderType;
         private System.Windows.Forms.ComboBox cmbOrderType;
-        private System.Windows.Forms.Button btnNewOrder;
 
         // CATALOG
         private System.Windows.Forms.Panel pnlCatalog;
@@ -79,7 +78,6 @@
             this.cmbCustomer = new System.Windows.Forms.ComboBox();
             this.lblOrderType = new System.Windows.Forms.Label();
             this.cmbOrderType = new System.Windows.Forms.ComboBox();
-            this.btnNewOrder = new System.Windows.Forms.Button();
 
             this.pnlCatalog = new System.Windows.Forms.Panel();
             this.pnlCatalogHeader = new System.Windows.Forms.Panel();
@@ -148,68 +146,101 @@
             this.Text = "Order Management";
 
             // ============================================================
-            // HEADER
+            // HEADER — TableLayoutPanel
+            //   Col 0 (fill) : title + subtitle
+            //   Col 1 (420)  : customer picker
+            //   Col 2 (180)  : order type
             // ============================================================
             this.pnlHeader.Dock = System.Windows.Forms.DockStyle.Top;
-            this.pnlHeader.Height = 96;
+            this.pnlHeader.Height = 108;
             this.pnlHeader.BackColor = System.Drawing.Color.White;
             this.pnlHeader.Padding = new System.Windows.Forms.Padding(24, 16, 24, 16);
 
-            // Title block (left)
+            var tblHeader = new System.Windows.Forms.TableLayoutPanel();
+            tblHeader.Dock = System.Windows.Forms.DockStyle.Fill;
+            tblHeader.ColumnCount = 3;
+            tblHeader.RowCount = 1;
+            tblHeader.Padding = new System.Windows.Forms.Padding(0);
+            tblHeader.Margin = new System.Windows.Forms.Padding(0);
+            tblHeader.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            tblHeader.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 420F));
+            tblHeader.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 180F));
+            tblHeader.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
+
+            // ---- Col 0: title block ----
+            var flowTitle = new System.Windows.Forms.FlowLayoutPanel();
+            flowTitle.Dock = System.Windows.Forms.DockStyle.Fill;
+            flowTitle.FlowDirection = System.Windows.Forms.FlowDirection.TopDown;
+            flowTitle.WrapContents = false;
+            flowTitle.Margin = new System.Windows.Forms.Padding(0);
+            flowTitle.Padding = new System.Windows.Forms.Padding(0, 12, 0, 0);
+
             this.lblHeaderTitle.AutoSize = true;
             this.lblHeaderTitle.Font = new System.Drawing.Font("Segoe UI", 17F, System.Drawing.FontStyle.Bold);
             this.lblHeaderTitle.ForeColor = System.Drawing.Color.FromArgb(25, 35, 50);
-            this.lblHeaderTitle.Location = new System.Drawing.Point(24, 14);
+            this.lblHeaderTitle.Margin = new System.Windows.Forms.Padding(0);
             this.lblHeaderTitle.Text = "New Order";
 
             this.lblHeaderSubtitle.AutoSize = true;
             this.lblHeaderSubtitle.Font = new System.Drawing.Font("Segoe UI", 9F);
             this.lblHeaderSubtitle.ForeColor = System.Drawing.Color.FromArgb(110, 120, 135);
-            this.lblHeaderSubtitle.Location = new System.Drawing.Point(26, 46);
+            this.lblHeaderSubtitle.Margin = new System.Windows.Forms.Padding(2, 2, 0, 0);
             this.lblHeaderSubtitle.Text = "Create and process a customer order";
 
-            // Customer (label above input)
+            flowTitle.Controls.Add(this.lblHeaderTitle);
+            flowTitle.Controls.Add(this.lblHeaderSubtitle);
+
+            // ---- Col 1: customer picker ----
+            var flowCustomer = new System.Windows.Forms.FlowLayoutPanel();
+            flowCustomer.Dock = System.Windows.Forms.DockStyle.Fill;
+            flowCustomer.FlowDirection = System.Windows.Forms.FlowDirection.TopDown;
+            flowCustomer.WrapContents = false;
+            flowCustomer.Margin = new System.Windows.Forms.Padding(0, 10, 16, 0);
+            flowCustomer.Padding = new System.Windows.Forms.Padding(0);
+
             this.lblCustomer.AutoSize = true;
             this.lblCustomer.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
             this.lblCustomer.ForeColor = System.Drawing.Color.FromArgb(90, 100, 115);
-            this.lblCustomer.Location = new System.Drawing.Point(370, 14);
+            this.lblCustomer.Margin = new System.Windows.Forms.Padding(0, 0, 0, 4);
             this.lblCustomer.Text = "CUSTOMER";
 
-            this.cmbCustomer.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.cmbCustomer.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.cmbCustomer.Location = new System.Drawing.Point(370, 34);
-            this.cmbCustomer.Size = new System.Drawing.Size(320, 29);
+            this.cmbCustomer.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDown;
+            this.cmbCustomer.AutoCompleteMode = System.Windows.Forms.AutoCompleteMode.SuggestAppend;
+            this.cmbCustomer.AutoCompleteSource = System.Windows.Forms.AutoCompleteSource.ListItems;
+            this.cmbCustomer.FlatStyle = System.Windows.Forms.FlatStyle.Standard;
+            this.cmbCustomer.Size = new System.Drawing.Size(390, 32);
+            this.cmbCustomer.Margin = new System.Windows.Forms.Padding(0);
 
-            // Order Type
+            flowCustomer.Controls.Add(this.lblCustomer);
+            flowCustomer.Controls.Add(this.cmbCustomer);
+
+            // ---- Col 2: order type ----
+            var flowOrderType = new System.Windows.Forms.FlowLayoutPanel();
+            flowOrderType.Dock = System.Windows.Forms.DockStyle.Fill;
+            flowOrderType.FlowDirection = System.Windows.Forms.FlowDirection.TopDown;
+            flowOrderType.WrapContents = false;
+            flowOrderType.Margin = new System.Windows.Forms.Padding(0, 10, 0, 0);
+            flowOrderType.Padding = new System.Windows.Forms.Padding(0);
+
             this.lblOrderType.AutoSize = true;
             this.lblOrderType.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
             this.lblOrderType.ForeColor = System.Drawing.Color.FromArgb(90, 100, 115);
-            this.lblOrderType.Location = new System.Drawing.Point(710, 14);
+            this.lblOrderType.Margin = new System.Windows.Forms.Padding(0, 0, 0, 4);
             this.lblOrderType.Text = "ORDER TYPE";
 
             this.cmbOrderType.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.cmbOrderType.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.cmbOrderType.Location = new System.Drawing.Point(710, 34);
-            this.cmbOrderType.Size = new System.Drawing.Size(160, 29);
+            this.cmbOrderType.FlatStyle = System.Windows.Forms.FlatStyle.Standard;
+            this.cmbOrderType.Size = new System.Drawing.Size(160, 32);
+            this.cmbOrderType.Margin = new System.Windows.Forms.Padding(0);
 
-            // New Order button (anchored right)
-            this.btnNewOrder.Anchor =
-                System.Windows.Forms.AnchorStyles.Top |
-                System.Windows.Forms.AnchorStyles.Right;
-            this.btnNewOrder.Location = new System.Drawing.Point(1150, 32);
-            this.btnNewOrder.Size = new System.Drawing.Size(150, 36);
-            this.btnNewOrder.Text = "+  New Order";
-            this.btnNewOrder.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
-            this.btnNewOrder.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.btnNewOrder.FlatAppearance.BorderSize = 0;
+            flowOrderType.Controls.Add(this.lblOrderType);
+            flowOrderType.Controls.Add(this.cmbOrderType);
 
-            this.pnlHeader.Controls.Add(this.lblHeaderTitle);
-            this.pnlHeader.Controls.Add(this.lblHeaderSubtitle);
-            this.pnlHeader.Controls.Add(this.lblCustomer);
-            this.pnlHeader.Controls.Add(this.cmbCustomer);
-            this.pnlHeader.Controls.Add(this.lblOrderType);
-            this.pnlHeader.Controls.Add(this.cmbOrderType);
-            this.pnlHeader.Controls.Add(this.btnNewOrder);
+            tblHeader.Controls.Add(flowTitle, 0, 0);
+            tblHeader.Controls.Add(flowCustomer, 1, 0);
+            tblHeader.Controls.Add(flowOrderType, 2, 0);
+
+            this.pnlHeader.Controls.Add(tblHeader);
 
             // ============================================================
             // CART (right side)
@@ -219,7 +250,6 @@
             this.pnlCart.BackColor = System.Drawing.Color.White;
             this.pnlCart.Padding = new System.Windows.Forms.Padding(20);
 
-            // Cart header
             this.pnlCartHeader.Dock = System.Windows.Forms.DockStyle.Top;
             this.pnlCartHeader.Height = 60;
             this.pnlCartHeader.BackColor = System.Drawing.Color.White;
@@ -239,7 +269,6 @@
             this.pnlCartHeader.Controls.Add(this.lblCartTitle);
             this.pnlCartHeader.Controls.Add(this.lblCartItems);
 
-            // Cart grid
             this.gridCart.Dock = System.Windows.Forms.DockStyle.Fill;
             this.gridCart.BackgroundColor = System.Drawing.Color.White;
             this.gridCart.BorderStyle = System.Windows.Forms.BorderStyle.None;
@@ -255,23 +284,18 @@
             this.gridCart.RowTemplate.Height = 42;
 
             // ============================================================
-            // CART FOOTER — aligned using X positions and consistent Y rhythm
+            // CART FOOTER
             // ============================================================
             this.pnlCartFooter.Dock = System.Windows.Forms.DockStyle.Bottom;
             this.pnlCartFooter.Height = 570;
             this.pnlCartFooter.BackColor = System.Drawing.Color.White;
 
-            // ------------------------------------------------------------
-            // Totals section
-            // ------------------------------------------------------------
-            // Subtotal (left label / right value)
             this.lblSubTotal.AutoSize = true;
             this.lblSubTotal.Font = new System.Drawing.Font("Segoe UI", 9.5F);
             this.lblSubTotal.ForeColor = System.Drawing.Color.FromArgb(100, 110, 125);
             this.lblSubTotal.Location = new System.Drawing.Point(0, 10);
             this.lblSubTotal.Text = "SubTotal: ₱0.00";
 
-            // Discount
             this.lblDiscount.AutoSize = true;
             this.lblDiscount.Font = new System.Drawing.Font("Segoe UI", 9F);
             this.lblDiscount.ForeColor = System.Drawing.Color.FromArgb(30, 150, 90);
@@ -279,7 +303,6 @@
             this.lblDiscount.Text = "Discount: -₱0.00";
             this.lblDiscount.Visible = false;
 
-            // TOTAL label + value
             this.lblTotalLabel.AutoSize = true;
             this.lblTotalLabel.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
             this.lblTotalLabel.ForeColor = System.Drawing.Color.FromArgb(25, 35, 50);
@@ -292,15 +315,11 @@
             this.lblTotal.Location = new System.Drawing.Point(340, 56);
             this.lblTotal.Text = "₱0.00";
 
-            // Divider
             var div1 = new System.Windows.Forms.Panel();
             div1.BackColor = System.Drawing.Color.FromArgb(230, 234, 240);
             div1.Location = new System.Drawing.Point(0, 108);
             div1.Size = new System.Drawing.Size(460, 1);
 
-            // ------------------------------------------------------------
-            // Promotion section
-            // ------------------------------------------------------------
             this.lblPromotion.AutoSize = true;
             this.lblPromotion.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
             this.lblPromotion.ForeColor = System.Drawing.Color.FromArgb(90, 100, 115);
@@ -308,7 +327,7 @@
             this.lblPromotion.Text = "PROMOTION";
 
             this.cmbPromotion.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.cmbPromotion.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.cmbPromotion.FlatStyle = System.Windows.Forms.FlatStyle.Standard;
             this.cmbPromotion.Location = new System.Drawing.Point(0, 144);
             this.cmbPromotion.Size = new System.Drawing.Size(280, 29);
 
@@ -323,15 +342,11 @@
             this.btnClearPromo.Text = "Clear";
             this.btnClearPromo.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
 
-            // Divider
             var div2 = new System.Windows.Forms.Panel();
             div2.BackColor = System.Drawing.Color.FromArgb(230, 234, 240);
             div2.Location = new System.Drawing.Point(0, 188);
             div2.Size = new System.Drawing.Size(460, 1);
 
-            // ------------------------------------------------------------
-            // Loyalty section
-            // ------------------------------------------------------------
             this.lblPointsBalance.AutoSize = true;
             this.lblPointsBalance.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
             this.lblPointsBalance.ForeColor = System.Drawing.Color.FromArgb(30, 150, 90);
@@ -360,22 +375,17 @@
             this.btnClearPoints.Text = "Clear";
             this.btnClearPoints.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
 
-            // Divider
             var div3 = new System.Windows.Forms.Panel();
             div3.BackColor = System.Drawing.Color.FromArgb(230, 234, 240);
             div3.Location = new System.Drawing.Point(0, 292);
             div3.Size = new System.Drawing.Size(460, 1);
 
-            // ------------------------------------------------------------
-            // Payment section
-            // ------------------------------------------------------------
             this.lblPaymentSection.AutoSize = true;
             this.lblPaymentSection.Font = new System.Drawing.Font("Segoe UI", 10.5F, System.Drawing.FontStyle.Bold);
             this.lblPaymentSection.ForeColor = System.Drawing.Color.FromArgb(25, 35, 50);
             this.lblPaymentSection.Location = new System.Drawing.Point(0, 304);
             this.lblPaymentSection.Text = "Payment";
 
-            // Amount Paid
             this.lblAmountPaid.AutoSize = true;
             this.lblAmountPaid.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
             this.lblAmountPaid.ForeColor = System.Drawing.Color.FromArgb(90, 100, 115);
@@ -389,7 +399,6 @@
             this.numAmountPaid.ThousandsSeparator = true;
             this.numAmountPaid.Font = new System.Drawing.Font("Segoe UI", 12F, System.Drawing.FontStyle.Bold);
 
-            // Payment Method (left half)
             this.lblPaymentMethod.AutoSize = true;
             this.lblPaymentMethod.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
             this.lblPaymentMethod.ForeColor = System.Drawing.Color.FromArgb(90, 100, 115);
@@ -397,11 +406,10 @@
             this.lblPaymentMethod.Text = "PAYMENT METHOD";
 
             this.cmbPaymentMethod.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.cmbPaymentMethod.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.cmbPaymentMethod.FlatStyle = System.Windows.Forms.FlatStyle.Standard;
             this.cmbPaymentMethod.Location = new System.Drawing.Point(0, 420);
             this.cmbPaymentMethod.Size = new System.Drawing.Size(225, 29);
 
-            // GCash Reference (right half)
             this.lblReference.AutoSize = true;
             this.lblReference.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
             this.lblReference.ForeColor = System.Drawing.Color.FromArgb(90, 100, 115);
@@ -411,7 +419,6 @@
             this.txtReference.Location = new System.Drawing.Point(235, 420);
             this.txtReference.Size = new System.Drawing.Size(225, 29);
 
-            // Change
             this.lblChangeLabel.AutoSize = true;
             this.lblChangeLabel.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
             this.lblChangeLabel.ForeColor = System.Drawing.Color.FromArgb(90, 100, 115);
@@ -424,7 +431,6 @@
             this.lblChange.Location = new System.Drawing.Point(340, 458);
             this.lblChange.Text = "₱0.00";
 
-            // Pay button (full-width)
             this.btnPay.Location = new System.Drawing.Point(0, 492);
             this.btnPay.Size = new System.Drawing.Size(460, 48);
             this.btnPay.Text = "PAY ORDER";
@@ -432,14 +438,12 @@
             this.btnPay.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnPay.FlatAppearance.BorderSize = 0;
 
-            // Status
             this.lblStatus.AutoSize = false;
             this.lblStatus.Location = new System.Drawing.Point(0, 548);
             this.lblStatus.Size = new System.Drawing.Size(460, 20);
             this.lblStatus.Font = new System.Drawing.Font("Segoe UI", 8.5F);
             this.lblStatus.ForeColor = System.Drawing.Color.FromArgb(110, 120, 135);
 
-            // Add to footer
             this.pnlCartFooter.Controls.Add(this.lblSubTotal);
             this.pnlCartFooter.Controls.Add(this.lblDiscount);
             this.pnlCartFooter.Controls.Add(this.lblTotalLabel);
@@ -468,7 +472,6 @@
             this.pnlCartFooter.Controls.Add(this.btnPay);
             this.pnlCartFooter.Controls.Add(this.lblStatus);
 
-            // Add cart pieces
             this.pnlCart.Controls.Add(this.gridCart);
             this.pnlCart.Controls.Add(this.pnlCartFooter);
             this.pnlCart.Controls.Add(this.pnlCartHeader);
@@ -480,7 +483,6 @@
             this.pnlCatalog.BackColor = System.Drawing.Color.FromArgb(245, 247, 250);
             this.pnlCatalog.Padding = new System.Windows.Forms.Padding(20, 20, 20, 20);
 
-            // Catalog header
             this.pnlCatalogHeader.Dock = System.Windows.Forms.DockStyle.Top;
             this.pnlCatalogHeader.Height = 96;
             this.pnlCatalogHeader.BackColor = System.Drawing.Color.White;
@@ -504,7 +506,7 @@
             this.txtProductSearch.PlaceholderText = "Search products...";
 
             this.cmbCategoryFilter.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.cmbCategoryFilter.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.cmbCategoryFilter.FlatStyle = System.Windows.Forms.FlatStyle.Standard;
             this.cmbCategoryFilter.Location = new System.Drawing.Point(615, 28);
             this.cmbCategoryFilter.Size = new System.Drawing.Size(190, 29);
 
@@ -521,7 +523,6 @@
             this.pnlCatalogHeader.Controls.Add(this.cmbCategoryFilter);
             this.pnlCatalogHeader.Controls.Add(this.lblCatalogEmpty);
 
-            // Product tiles
             this.flowProducts.Dock = System.Windows.Forms.DockStyle.Fill;
             this.flowProducts.AutoScroll = true;
             this.flowProducts.FlowDirection = System.Windows.Forms.FlowDirection.LeftToRight;

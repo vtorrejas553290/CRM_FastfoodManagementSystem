@@ -11,7 +11,10 @@
         private System.Windows.Forms.ComboBox cmbMethodFilter;
         private System.Windows.Forms.Label lblDateFilter;
         private System.Windows.Forms.ComboBox cmbDateFilter;
-        private System.Windows.Forms.Button btnRefresh;
+        private System.Windows.Forms.Label lblFromDate;
+        private System.Windows.Forms.DateTimePicker dtpFromDate;
+        private System.Windows.Forms.Label lblToDate;
+        private System.Windows.Forms.DateTimePicker dtpToDate;
         private System.Windows.Forms.Label lblTotal;
         private System.Windows.Forms.DataGridView gridTransactions;
 
@@ -50,7 +53,10 @@
             this.cmbMethodFilter = new System.Windows.Forms.ComboBox();
             this.lblDateFilter = new System.Windows.Forms.Label();
             this.cmbDateFilter = new System.Windows.Forms.ComboBox();
-            this.btnRefresh = new System.Windows.Forms.Button();
+            this.lblFromDate = new System.Windows.Forms.Label();
+            this.dtpFromDate = new System.Windows.Forms.DateTimePicker();
+            this.lblToDate = new System.Windows.Forms.Label();
+            this.dtpToDate = new System.Windows.Forms.DateTimePicker();
             this.lblTotal = new System.Windows.Forms.Label();
             this.gridTransactions = new System.Windows.Forms.DataGridView();
 
@@ -84,17 +90,17 @@
             this.SuspendLayout();
 
             // ============================================================
-            // pnlTop — header with filter row + total label
+            // pnlTop
             // ============================================================
             this.pnlTop.Dock = System.Windows.Forms.DockStyle.Top;
             this.pnlTop.Height = 96;
             this.pnlTop.BackColor = System.Drawing.Color.White;
             this.pnlTop.Padding = new System.Windows.Forms.Padding(16, 14, 16, 8);
 
-            // tblFilters: search | method | date | refresh
+            // tblFilters — search | method | date group
             this.tblFilters.Dock = System.Windows.Forms.DockStyle.Top;
             this.tblFilters.Height = 40;
-            this.tblFilters.ColumnCount = 4;
+            this.tblFilters.ColumnCount = 3;
             this.tblFilters.RowCount = 1;
             this.tblFilters.Padding = new System.Windows.Forms.Padding(0);
             this.tblFilters.Margin = new System.Windows.Forms.Padding(0);
@@ -104,9 +110,7 @@
             this.tblFilters.ColumnStyles.Add(
                 new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 220F));
             this.tblFilters.ColumnStyles.Add(
-                new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 240F));
-            this.tblFilters.ColumnStyles.Add(
-                new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 120F));
+                new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 560F));
 
             this.tblFilters.RowStyles.Add(
                 new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 40F));
@@ -140,7 +144,7 @@
             this.flowDate.FlowDirection = System.Windows.Forms.FlowDirection.LeftToRight;
             this.flowDate.WrapContents = false;
             this.flowDate.AutoSize = false;
-            this.flowDate.Margin = new System.Windows.Forms.Padding(0, 0, 12, 0);
+            this.flowDate.Margin = new System.Windows.Forms.Padding(0);
             this.flowDate.Padding = new System.Windows.Forms.Padding(0, 7, 0, 0);
 
             this.lblDateFilter.AutoSize = true;
@@ -149,20 +153,36 @@
             this.lblDateFilter.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
 
             this.cmbDateFilter.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.cmbDateFilter.Width = 160;
+            this.cmbDateFilter.Width = 130;
+
+            this.lblFromDate.AutoSize = true;
+            this.lblFromDate.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
+            this.lblFromDate.Text = "From:";
+            this.lblFromDate.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+
+            this.dtpFromDate.Format = System.Windows.Forms.DateTimePickerFormat.Short;
+            this.dtpFromDate.Width = 110;
+            this.dtpFromDate.Margin = new System.Windows.Forms.Padding(0, 0, 12, 0);
+
+            this.lblToDate.AutoSize = true;
+            this.lblToDate.Margin = new System.Windows.Forms.Padding(0, 0, 4, 0);
+            this.lblToDate.Text = "To:";
+            this.lblToDate.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+
+            this.dtpToDate.Format = System.Windows.Forms.DateTimePickerFormat.Short;
+            this.dtpToDate.Width = 110;
+            this.dtpToDate.Margin = new System.Windows.Forms.Padding(0);
 
             this.flowDate.Controls.Add(this.lblDateFilter);
             this.flowDate.Controls.Add(this.cmbDateFilter);
-
-            // btnRefresh
-            this.btnRefresh.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.btnRefresh.Margin = new System.Windows.Forms.Padding(0);
-            this.btnRefresh.Text = "Refresh";
+            this.flowDate.Controls.Add(this.lblFromDate);
+            this.flowDate.Controls.Add(this.dtpFromDate);
+            this.flowDate.Controls.Add(this.lblToDate);
+            this.flowDate.Controls.Add(this.dtpToDate);
 
             this.tblFilters.Controls.Add(this.txtSearch, 0, 0);
             this.tblFilters.Controls.Add(this.flowMethod, 1, 0);
             this.tblFilters.Controls.Add(this.flowDate, 2, 0);
-            this.tblFilters.Controls.Add(this.btnRefresh, 3, 0);
 
             // lblTotal
             this.lblTotal.AutoSize = false;
@@ -177,14 +197,13 @@
             this.pnlTop.Controls.Add(this.tblFilters);
 
             // ============================================================
-            // pnlGridWrap — grid fills remaining space
+            // pnlGridWrap
             // ============================================================
             this.pnlGridWrap.Dock = System.Windows.Forms.DockStyle.Fill;
             this.pnlGridWrap.Padding = new System.Windows.Forms.Padding(16, 8, 16, 8);
             this.pnlGridWrap.BackColor = System.Drawing.Color.FromArgb(248, 249, 250);
             this.pnlGridWrap.Controls.Add(this.gridTransactions);
 
-            // gridTransactions
             this.gridTransactions.Dock = System.Windows.Forms.DockStyle.Fill;
             this.gridTransactions.BackgroundColor = System.Drawing.Color.White;
             this.gridTransactions.BorderStyle = System.Windows.Forms.BorderStyle.None;
@@ -199,14 +218,13 @@
                 System.Windows.Forms.DataGridViewAutoSizeColumnsMode.Fill;
 
             // ============================================================
-            // pnlPager — pagination bar (redesigned)
+            // pnlPager
             // ============================================================
             this.pnlPager.Dock = System.Windows.Forms.DockStyle.Bottom;
             this.pnlPager.Height = 52;
             this.pnlPager.BackColor = System.Drawing.Color.White;
             this.pnlPager.Padding = new System.Windows.Forms.Padding(16, 8, 16, 8);
 
-            // tblPager: [page size group] [nav cluster] [showing label (right)]
             this.tblPager.Dock = System.Windows.Forms.DockStyle.Fill;
             this.tblPager.ColumnCount = 3;
             this.tblPager.RowCount = 1;
@@ -223,7 +241,6 @@
             this.tblPager.RowStyles.Add(
                 new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
 
-            // ---- flowPageSize: "Rows per page:" + combo ----
             this.flowPageSize.AutoSize = true;
             this.flowPageSize.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
             this.flowPageSize.FlowDirection = System.Windows.Forms.FlowDirection.LeftToRight;
@@ -244,7 +261,6 @@
             this.flowPageSize.Controls.Add(this.lblPageSize);
             this.flowPageSize.Controls.Add(this.cmbPageSize);
 
-            // ---- tblNav: [ « ] [ ‹ ] [ Page X of Y ] [ › ] [ » ] ----
             this.tblNav.AutoSize = true;
             this.tblNav.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
             this.tblNav.ColumnCount = 5;
@@ -267,35 +283,30 @@
             this.tblNav.RowStyles.Add(
                 new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 34F));
 
-            // btnFirstPage «
             this.btnFirstPage.Dock = System.Windows.Forms.DockStyle.Fill;
             this.btnFirstPage.Margin = new System.Windows.Forms.Padding(0, 0, 4, 0);
             this.btnFirstPage.Font = new System.Drawing.Font("Segoe UI", 11F, System.Drawing.FontStyle.Bold);
             this.btnFirstPage.Text = "«";
             this.btnFirstPage.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
 
-            // btnPrevPage ‹
             this.btnPrevPage.Dock = System.Windows.Forms.DockStyle.Fill;
             this.btnPrevPage.Margin = new System.Windows.Forms.Padding(0, 0, 4, 0);
             this.btnPrevPage.Font = new System.Drawing.Font("Segoe UI", 11F, System.Drawing.FontStyle.Bold);
             this.btnPrevPage.Text = "‹";
             this.btnPrevPage.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
 
-            // lblPageInfo
             this.lblPageInfo.Dock = System.Windows.Forms.DockStyle.Fill;
             this.lblPageInfo.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.lblPageInfo.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Bold);
             this.lblPageInfo.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             this.lblPageInfo.Text = "Page 1 of 1";
 
-            // btnNextPage ›
             this.btnNextPage.Dock = System.Windows.Forms.DockStyle.Fill;
             this.btnNextPage.Margin = new System.Windows.Forms.Padding(0, 0, 4, 0);
             this.btnNextPage.Font = new System.Drawing.Font("Segoe UI", 11F, System.Drawing.FontStyle.Bold);
             this.btnNextPage.Text = "›";
             this.btnNextPage.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
 
-            // btnLastPage »
             this.btnLastPage.Dock = System.Windows.Forms.DockStyle.Fill;
             this.btnLastPage.Margin = new System.Windows.Forms.Padding(0);
             this.btnLastPage.Font = new System.Drawing.Font("Segoe UI", 11F, System.Drawing.FontStyle.Bold);
@@ -308,7 +319,6 @@
             this.tblNav.Controls.Add(this.btnNextPage, 3, 0);
             this.tblNav.Controls.Add(this.btnLastPage, 4, 0);
 
-            // ---- lblShowing ----
             this.lblShowing.AutoSize = true;
             this.lblShowing.Anchor = System.Windows.Forms.AnchorStyles.Right;
             this.lblShowing.Margin = new System.Windows.Forms.Padding(0);
@@ -325,8 +335,8 @@
             // ============================================================
             // FrmViewTransactions
             // ============================================================
-            this.ClientSize = new System.Drawing.Size(1100, 720);
-            this.MinimumSize = new System.Drawing.Size(900, 600);
+            this.ClientSize = new System.Drawing.Size(1200, 720);
+            this.MinimumSize = new System.Drawing.Size(1000, 600);
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "View Transactions";
             this.Controls.Add(this.pnlGridWrap);

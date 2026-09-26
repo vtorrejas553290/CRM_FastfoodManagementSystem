@@ -85,6 +85,9 @@
     <Compile Update="Forms\FrmPromotions.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Update="Forms\FrmReceipt.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Update="Forms\FrmRegisterCustomer.cs">
       <SubType>Form</SubType>
     </Compile>

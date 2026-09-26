@@ -1,17 +1,20 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using CRM.api.Controllers;
+using CRM.domain.Controllers;
+using CRM.domain.Models;
+using CRM.infrastructure;
 
 namespace CRM.winForms.Forms;
 
 public partial class FrmFeedbackList : Form
 {
-    // Only STAFF can add feedback
+    private readonly IFeedbackController _controller = new FeedbackController();
+
     private readonly bool _canAdd;
-
-    // ADMIN and MANAGER can edit status + archive
     private readonly bool _canManage;
-
-    // ADMIN, MANAGER, and STAFF can view
     private readonly bool _canView;
+
+    private List<FeedbackRow> _allRows = new();
+    private int _currentPage = 1;
 
     public FrmFeedbackList()
     {
@@ -26,14 +29,38 @@ public partial class FrmFeedbackList : Form
         {
             InitStatusFilter();
             InitStarsFilter();
+            InitPager();
             LoadFeedback();
         };
 
-        btnRefresh.Click += (_, __) => LoadFeedback();
+        
         btnAdd.Click += BtnAdd_Click;
-        txtSearch.TextChanged += (_, __) => LoadFeedback();
-        cmbFilterStatus.SelectedIndexChanged += (_, __) => LoadFeedback();
-        cmbFilterStars.SelectedIndexChanged += (_, __) => LoadFeedback();
+
+        txtSearch.TextChanged += (_, __) =>
+        {
+            _currentPage = 1;
+            LoadFeedback();
+        };
+        cmbFilterStatus.SelectedIndexChanged += (_, __) =>
+        {
+            _currentPage = 1;
+            LoadFeedback();
+        };
+        cmbFilterStars.SelectedIndexChanged += (_, __) =>
+        {
+            _currentPage = 1;
+            LoadFeedback();
+        };
+
+        cmbPageSize.SelectedIndexChanged += (_, __) =>
+        {
+            _currentPage = 1;
+            RenderPage();
+        };
+        btnFirstPage.Click += (_, __) => GoToPage(1);
+        btnPrevPage.Click += (_, __) => GoToPage(_currentPage - 1);
+        btnNextPage.Click += (_, __) => GoToPage(_currentPage + 1);
+        btnLastPage.Click += (_, __) => GoToPage(TotalPages);
     }
 
     private void ApplyTheme()
@@ -41,11 +68,12 @@ public partial class FrmFeedbackList : Form
         AppTheme.ApplyForm(this);
         pnlTop.BackColor = AppTheme.Surface;
         pnlGridWrap.BackColor = AppTheme.ContentSurface;
+        pnlPager.BackColor = AppTheme.Surface;
 
         AppTheme.StyleInput(txtSearch);
         AppTheme.StyleInput(cmbFilterStatus);
         AppTheme.StyleInput(cmbFilterStars);
-        AppTheme.StyleSecondaryButton(btnRefresh);
+        
         AppTheme.StyleSuccessButton(btnAdd);
         AppTheme.StyleGrid(gridFeedback);
 
@@ -53,21 +81,20 @@ public partial class FrmFeedbackList : Form
         AppTheme.StyleLabel(lblFilterStatus);
         AppTheme.StyleLabel(lblFilterStars);
 
-        lblMode.Font = AppTheme.FontHeading;
-        lblMode.ForeColor = AppTheme.TextPrimary;
+        lblTotal.Font = AppTheme.FontSubheading;
+        lblTotal.ForeColor = AppTheme.Primary20;
 
-        // Mode label
-        if (_canAdd)
-            lblMode.Text = "Customer Feedback — Staff (Add)";
-        else if (_canManage)
-            lblMode.Text = "Customer Feedback — Management (Edit / Archive)";
-        else
-            lblMode.Text = "Customer Feedback — View Only";
+        AppTheme.StyleLabel(lblPageSize);
+        AppTheme.StyleLabel(lblPageInfo);
+        AppTheme.StyleLabel(lblShowing);
+        AppTheme.StyleInput(cmbPageSize);
+        AppTheme.StyleSecondaryButton(btnFirstPage);
+        AppTheme.StyleSecondaryButton(btnPrevPage);
+        AppTheme.StyleSecondaryButton(btnNextPage);
+        AppTheme.StyleSecondaryButton(btnLastPage);
 
-        // Only Staff sees Add button
         btnAdd.Visible = _canAdd;
 
-        // Register row-action styling once (for managers/admins)
         if (_canManage)
         {
             AppTheme.RegisterButtonColumnStyles(gridFeedback,
@@ -99,62 +126,42 @@ public partial class FrmFeedbackList : Form
         cmbFilterStars.SelectedIndex = 0;
     }
 
+    private void InitPager()
+    {
+        cmbPageSize.Items.Clear();
+        cmbPageSize.Items.AddRange(new object[] { "10", "25", "50", "100", "All" });
+        cmbPageSize.SelectedIndex = 1;
+    }
+
+    // ============================================================
+    //  DATA LOAD
+    // ============================================================
+
     private void LoadFeedback()
     {
         try
         {
             if (!_canView)
             {
-                gridFeedback.DataSource = new List<object>();
+                _allRows = new List<FeedbackRow>();
+                RenderPage();
                 return;
             }
 
-            using var db = AppServices.CreateTenantContext();
-
-            var search = txtSearch.Text.Trim().ToLower();
-            var status = cmbFilterStatus.SelectedItem?.ToString() ?? "All";
-            var starsText = cmbFilterStars.SelectedItem?.ToString() ?? "All";
-
-            var query = db.CustomerFeedbacks
-                .Include(x => x.Customer)
-                .AsNoTracking();
-
-            if (status != "All")
-                query = query.Where(x => x.Status == status);
-
-            if (starsText != "All" && starsText.Length > 0)
+            var filter = new FeedbackFilter
             {
-                var firstChar = starsText[0];
-                if (char.IsDigit(firstChar))
-                {
-                    int stars = firstChar - '0';
-                    query = query.Where(x => x.Rating == stars);
-                }
-            }
+                Search = txtSearch.Text.Trim().ToLower(),
+                Status = cmbFilterStatus.SelectedItem?.ToString() ?? "All",
+                StarsText = cmbFilterStars.SelectedItem?.ToString() ?? "All"
+            };
 
-            var items = query
-                .Where(x =>
-                    string.IsNullOrWhiteSpace(search) ||
-                    (x.Customer != null && x.Customer.CustomerName.ToLower().Contains(search)) ||
-                    (x.Comments != null && x.Comments.ToLower().Contains(search)))
-                .OrderByDescending(x => x.SubmittedAt)
-                .Select(x => new
-                {
-                    x.CustomerFeedbackId,
-                    Customer = x.Customer != null ? x.Customer.CustomerName : "(deleted)",
-                    x.Rating,
-                    Category = x.Category,
-                    x.Comments,
-                    x.Status,
-                    x.SubmittedAt
-                })
-                .ToList();
+            _allRows = _controller.GetFeedback(filter);
 
-            gridFeedback.DataSource = items;
+            if (_currentPage > TotalPages) _currentPage = Math.Max(1, TotalPages);
 
-            // Add row-action columns only for admin/manager
-            if (_canManage)
-                BuildActionColumns();
+            RenderPage();
+
+            lblTotal.Text = $"Total Entries: {_allRows.Count}";
         }
         catch (Exception ex)
         {
@@ -162,10 +169,77 @@ public partial class FrmFeedbackList : Form
         }
     }
 
-    /// <summary>
-    /// Adds Edit Status + Archive row actions to the grid.
-    /// Only used for Admin and Manager.
-    /// </summary>
+    // ============================================================
+    //  PAGINATION
+    // ============================================================
+
+    private int PageSize
+    {
+        get
+        {
+            var s = cmbPageSize.SelectedItem?.ToString();
+            if (string.IsNullOrEmpty(s) || s == "All") return int.MaxValue;
+            return int.TryParse(s, out int n) && n > 0 ? n : 25;
+        }
+    }
+
+    private int TotalPages
+    {
+        get
+        {
+            if (PageSize == int.MaxValue) return 1;
+            return Math.Max(1, (int)Math.Ceiling(_allRows.Count / (double)PageSize));
+        }
+    }
+
+    private void GoToPage(int page)
+    {
+        int target = Math.Clamp(page, 1, TotalPages);
+        if (target == _currentPage) return;
+
+        _currentPage = target;
+        RenderPage();
+    }
+
+    private void RenderPage()
+    {
+        int size = PageSize;
+        List<FeedbackRow> pageRows;
+
+        if (size == int.MaxValue)
+            pageRows = _allRows;
+        else
+            pageRows = _allRows.Skip((_currentPage - 1) * size).Take(size).ToList();
+
+        gridFeedback.DataSource = pageRows;
+
+        if (_canManage)
+            BuildActionColumns();
+
+        StyleColumns();
+
+        int total = TotalPages;
+        lblPageInfo.Text = $"Page {_currentPage} of {total}";
+
+        int first = _allRows.Count == 0
+            ? 0
+            : ((_currentPage - 1) * (size == int.MaxValue ? _allRows.Count : size)) + 1;
+        int last = size == int.MaxValue
+            ? _allRows.Count
+            : Math.Min(_currentPage * size, _allRows.Count);
+        lblShowing.Text = $"Showing {first}–{last} of {_allRows.Count}";
+
+        bool multiPage = total > 1;
+        btnFirstPage.Enabled = multiPage && _currentPage > 1;
+        btnPrevPage.Enabled = multiPage && _currentPage > 1;
+        btnNextPage.Enabled = multiPage && _currentPage < total;
+        btnLastPage.Enabled = multiPage && _currentPage < total;
+    }
+
+    // ============================================================
+    //  ACTION COLUMNS
+    // ============================================================
+
     private void BuildActionColumns()
     {
         for (int i = gridFeedback.Columns.Count - 1; i >= 0; i--)
@@ -181,13 +255,97 @@ public partial class FrmFeedbackList : Form
         gridFeedback.Columns.Add(AppTheme.CreateGridButtonColumn(
             "colArchive", "Archive", "Archive", "danger", 100));
 
-        // Immediate attempt
         AppTheme.ApplyStyleToButtonColumn(gridFeedback, "colEditStatus", "warning");
         AppTheme.ApplyStyleToButtonColumn(gridFeedback, "colArchive", "danger");
 
         gridFeedback.CellContentClick -= GridFeedback_CellContentClick;
         gridFeedback.CellContentClick += GridFeedback_CellContentClick;
     }
+
+    private void StyleColumns()
+    {
+        var grid = gridFeedback;
+
+        if (grid.Columns.Contains("CustomerFeedbackId")) grid.Columns["CustomerFeedbackId"].Visible = false;
+
+        SetColumnFixed("Rating", "Rating", 90, DataGridViewContentAlignment.MiddleCenter);
+        SetColumnFixed("Category", "Category", 130, DataGridViewContentAlignment.MiddleLeft);
+        SetColumnFixed("Status", "Status", 120, DataGridViewContentAlignment.MiddleCenter);
+        SetColumnFixed("SubmittedAt", "Submitted", 130, DataGridViewContentAlignment.MiddleCenter);
+
+        SetColumnFill("Customer", "Customer", 40, 130, DataGridViewContentAlignment.MiddleLeft);
+        SetColumnFill("Comments", "Comments", 60, 180, DataGridViewContentAlignment.MiddleLeft);
+
+        if (grid.Columns.Contains("SubmittedAt"))
+            grid.Columns["SubmittedAt"].DefaultCellStyle.Format = "yyyy-MM-dd HH:mm";
+
+        foreach (var name in new[] { "colEditStatus", "colArchive" })
+        {
+            if (!grid.Columns.Contains(name)) continue;
+            var c = grid.Columns[name];
+            c.AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
+            c.Resizable = DataGridViewTriState.False;
+            c.DefaultCellStyle.Padding = new Padding(0);
+            c.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+            c.DefaultCellStyle.Font = new Font("Segoe UI", 9F);
+            c.DefaultCellStyle.ForeColor = AppTheme.TextOnDark;
+            c.DefaultCellStyle.SelectionForeColor = AppTheme.TextOnDark;
+            c.HeaderCell.Style.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+            c.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
+            c.MinimumWidth = c.Width;
+        }
+
+        grid.DefaultCellStyle.WrapMode = DataGridViewTriState.True;
+        grid.RowTemplate.Height = 32;
+
+        grid.CellFormatting -= Grid_CellFormatting;
+        grid.CellFormatting += Grid_CellFormatting;
+    }
+
+    private void SetColumnFixed(string name, string header, int width, DataGridViewContentAlignment align)
+    {
+        if (!gridFeedback.Columns.Contains(name)) return;
+        var c = gridFeedback.Columns[name];
+        c.HeaderText = header;
+        c.AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
+        c.Width = width;
+        c.MinimumWidth = width;
+        c.DefaultCellStyle.Alignment = align;
+    }
+
+    private void SetColumnFill(string name, string header, int fillWeight, int minWidth, DataGridViewContentAlignment align)
+    {
+        if (!gridFeedback.Columns.Contains(name)) return;
+        var c = gridFeedback.Columns[name];
+        c.HeaderText = header;
+        c.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
+        c.FillWeight = fillWeight;
+        c.MinimumWidth = minWidth;
+        c.DefaultCellStyle.Alignment = align;
+    }
+
+    private void Grid_CellFormatting(object? sender, DataGridViewCellFormattingEventArgs e)
+    {
+        if (e.RowIndex < 0 || e.RowIndex >= gridFeedback.Rows.Count) return;
+        var row = gridFeedback.Rows[e.RowIndex];
+        if (row.DataBoundItem is null) return;
+        if (gridFeedback.Columns[e.ColumnIndex].Name != "Status") return;
+
+        var status = row.Cells["Status"]?.Value?.ToString() ?? "";
+        e.CellStyle.ForeColor = status switch
+        {
+            "New" => Color.FromArgb(30, 100, 200),
+            "Reviewed" => Color.FromArgb(200, 130, 0),
+            "Resolved" => Color.FromArgb(22, 130, 60),
+            "Archived" => Color.FromArgb(120, 120, 120),
+            _ => AppTheme.TextPrimary
+        };
+        e.CellStyle.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+    }
+
+    // ============================================================
+    //  CLICK DISPATCH
+    // ============================================================
 
     private void GridFeedback_CellContentClick(object? sender, DataGridViewCellEventArgs e)
     {

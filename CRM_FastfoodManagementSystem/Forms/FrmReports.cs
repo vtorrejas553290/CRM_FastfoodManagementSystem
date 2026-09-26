@@ -1,5 +1,6 @@
-﻿using CRM.infrastructure.Data;
-using Microsoft.EntityFrameworkCore;
+﻿using CRM.api.Controllers;
+using CRM.domain.Controllers;
+using CRM.domain.Models;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
@@ -9,9 +10,14 @@ namespace CRM.winForms.Forms;
 
 public partial class FrmReports : Form
 {
-    // ---- Pagination state ----
-    private DataTable _allRows = new();
+    private readonly IReportController _controller = new ReportController();
+
+    // ---- Report state ----
+    private List<string> _columns = new();
+    private List<ReportRow> _allRows = new();
     private int _currentPage = 1;
+
+    private bool _syncingDates = false;
 
     public FrmReports()
     {
@@ -19,22 +25,52 @@ public partial class FrmReports : Form
         ApplyTheme();
 
         Load += FrmReports_Load;
-        btnGenerate.Click += (_, __) => GenerateReport();
         btnExportPdf.Click += (_, __) => ExportToPdf();
 
-        // Reset page when report type or date range changes
         cmbReportType.SelectedIndexChanged += (_, __) =>
         {
             _currentPage = 1;
             GenerateReport();
         };
+
         cmbDateRange.SelectedIndexChanged += (_, __) =>
         {
+            if (_syncingDates) return;
+
+            _syncingDates = true;
+            SyncDatePickersFromRange();
+            _syncingDates = false;
+
             _currentPage = 1;
             GenerateReport();
         };
 
-        // Pagination events
+        dtpFromDate.ValueChanged += (_, __) =>
+        {
+            if (_syncingDates) return;
+
+            _syncingDates = true;
+            if (cmbDateRange.SelectedItem?.ToString() != "Custom")
+                cmbDateRange.SelectedItem = "Custom";
+            _syncingDates = false;
+
+            _currentPage = 1;
+            GenerateReport();
+        };
+
+        dtpToDate.ValueChanged += (_, __) =>
+        {
+            if (_syncingDates) return;
+
+            _syncingDates = true;
+            if (cmbDateRange.SelectedItem?.ToString() != "Custom")
+                cmbDateRange.SelectedItem = "Custom";
+            _syncingDates = false;
+
+            _currentPage = 1;
+            GenerateReport();
+        };
+
         cmbPageSize.SelectedIndexChanged += (_, __) =>
         {
             _currentPage = 1;
@@ -53,19 +89,18 @@ public partial class FrmReports : Form
         pnlHeader.BackColor = AppTheme.Surface;
         pnlPager.BackColor = AppTheme.Surface;
 
-        lblTitle.Font = AppTheme.FontHeading;
-        lblTitle.ForeColor = AppTheme.TextPrimary;
+        
 
         AppTheme.StyleLabel(lblReportType);
         AppTheme.StyleLabel(lblDateRange);
+        AppTheme.StyleLabel(lblFromDate);
+        AppTheme.StyleLabel(lblToDate);
         AppTheme.StyleInput(cmbReportType);
         AppTheme.StyleInput(cmbDateRange);
-        AppTheme.StyleSecondaryButton(btnGenerate);
         AppTheme.StyleSecondaryButton(btnExportPdf);
         AppTheme.StyleGrid(gridReport);
         AppTheme.StyleLabel(lblStatus);
 
-        // Pager styling
         AppTheme.StyleLabel(lblPageSize);
         AppTheme.StyleLabel(lblPageInfo);
         AppTheme.StyleLabel(lblShowing);
@@ -92,27 +127,60 @@ public partial class FrmReports : Form
         cmbDateRange.Items.Clear();
         cmbDateRange.Items.AddRange(new object[]
         {
-            "Today", "Last 7 Days", "Last 30 Days", "All Time"
+            "Today", "Last 7 Days", "Last 30 Days", "All Time", "Custom"
         });
-        cmbDateRange.SelectedIndex = 1;
 
         cmbPageSize.Items.Clear();
         cmbPageSize.Items.AddRange(new object[] { "10", "25", "50", "100", "All" });
-        cmbPageSize.SelectedIndex = 1;   // default 25
+        cmbPageSize.SelectedIndex = 1;
+
+        _syncingDates = true;
+        cmbDateRange.SelectedIndex = 1;   // "Last 7 Days"
+        SyncDatePickersFromRange();
+        _syncingDates = false;
 
         GenerateReport();
     }
 
-    private DateTime? GetFromDate()
+    private void SyncDatePickersFromRange()
     {
         var now = DateTime.UtcNow;
-        return cmbDateRange.SelectedItem?.ToString() switch
+        var sel = cmbDateRange.SelectedItem?.ToString() ?? "Last 7 Days";
+
+        switch (sel)
         {
-            "Today" => now.Date,
-            "Last 7 Days" => now.AddDays(-7),
-            "Last 30 Days" => now.AddDays(-30),
-            _ => null
-        };
+            case "Today":
+                dtpFromDate.Value = now.Date;
+                dtpToDate.Value = now.Date;
+                break;
+            case "Last 7 Days":
+                dtpFromDate.Value = now.AddDays(-7).Date;
+                dtpToDate.Value = now.Date;
+                break;
+            case "Last 30 Days":
+                dtpFromDate.Value = now.AddDays(-30).Date;
+                dtpToDate.Value = now.Date;
+                break;
+            case "All Time":
+                dtpFromDate.Value = new DateTime(2000, 1, 1);
+                dtpToDate.Value = now.Date;
+                break;
+            case "Custom":
+                // leave current picker values alone
+                break;
+        }
+    }
+
+    private (DateTime? from, DateTime? to) GetFromTo()
+    {
+        var sel = cmbDateRange.SelectedItem?.ToString() ?? "Last 7 Days";
+
+        if (sel == "All Time")
+            return (null, null);
+
+        DateTime from = dtpFromDate.Value.Date;
+        DateTime to = dtpToDate.Value.Date.AddDays(1).AddTicks(-1);
+        return (from, to);
     }
 
     // ============================================================
@@ -123,131 +191,26 @@ public partial class FrmReports : Form
     {
         try
         {
-            using var db = AppServices.CreateTenantContext();
-            var from = GetFromDate();
-            var type = cmbReportType.SelectedItem?.ToString() ?? "Sales Report";
+            var (from, to) = GetFromTo();
 
-            DataTable table = new();
-
-            switch (type)
+            var filter = new ReportFilter
             {
-                case "Sales Report":
-                    table.Columns.Add("TransactionId", typeof(int));
-                    table.Columns.Add("PaidAt", typeof(DateTime));
-                    table.Columns.Add("PaymentMethod", typeof(string));
-                    table.Columns.Add("AmountPaid", typeof(decimal));
+                ReportType = cmbReportType.SelectedItem?.ToString() ?? "Sales Report",
+                DateRange = cmbDateRange.SelectedItem?.ToString() ?? "Last 7 Days",
+                FromDate = from,
+                ToDate = to
+            };
 
-                    foreach (var row in db.Transactions
-                        .Where(t => from == null || t.PaidAt >= from)
-                        .OrderByDescending(t => t.PaidAt)
-                        .Take(500)
-                        .ToList()
-                        .Select(t => new
-                        {
-                            t.TransactionId,
-                            t.PaidAt,
-                            t.PaymentMethod,
-                            t.AmountPaid
-                        }))
-                    {
-                        table.Rows.Add(row.TransactionId, row.PaidAt, row.PaymentMethod, row.AmountPaid);
-                    }
-                    break;
+            var result = _controller.GetReport(filter);
 
-                case "Inventory Report":
-                    table.Columns.Add("Product", typeof(string));
-                    table.Columns.Add("QuantityOnHand", typeof(decimal));
-                    table.Columns.Add("ReorderLevel", typeof(decimal));
-                    table.Columns.Add("Status", typeof(string));
+            _columns = result.Columns;
+            _allRows = result.Rows;
 
-                    foreach (var row in db.Inventories
-                        .Include(i => i.Product)
-                        .ToList()
-                        .Select(i => new
-                        {
-                            Product = i.Product?.ProductName ?? "(deleted)",
-                            i.QuantityOnHand,
-                            i.ReorderLevel,
-                            Status = i.QuantityOnHand <= i.ReorderLevel ? "LOW" : "OK"
-                        }))
-                    {
-                        table.Rows.Add(row.Product, row.QuantityOnHand, row.ReorderLevel, row.Status);
-                    }
-                    break;
-
-                case "Customer Report":
-                    table.Columns.Add("CustomerName", typeof(string));
-                    table.Columns.Add("CurrentPoints", typeof(int));
-                    table.Columns.Add("IsActive", typeof(bool));
-                    table.Columns.Add("CreatedAt", typeof(DateTime));
-
-                    foreach (var row in db.Customers
-                        .Where(c => from == null || c.CreatedAt >= from)
-                        .OrderByDescending(c => c.CreatedAt)
-                        .Take(500)
-                        .ToList()
-                        .Select(c => new
-                        {
-                            c.CustomerName,
-                            c.CurrentPoints,
-                            c.IsActive,
-                            c.CreatedAt
-                        }))
-                    {
-                        table.Rows.Add(row.CustomerName, row.CurrentPoints, row.IsActive, row.CreatedAt);
-                    }
-                    break;
-
-                case "Feedback Report":
-                    table.Columns.Add("Rating", typeof(int));
-                    table.Columns.Add("Status", typeof(string));
-                    table.Columns.Add("SubmittedAt", typeof(DateTime));
-
-                    foreach (var row in db.CustomerFeedbacks
-                        .Where(f => from == null || f.SubmittedAt >= from)
-                        .OrderByDescending(f => f.SubmittedAt)
-                        .Take(500)
-                        .ToList()
-                        .Select(f => new
-                        {
-                            f.Rating,
-                            f.Status,
-                            f.SubmittedAt
-                        }))
-                    {
-                        table.Rows.Add(row.Rating, row.Status, row.SubmittedAt);
-                    }
-                    break;
-
-                case "Promotions Report":
-                    table.Columns.Add("PromotionCode", typeof(string));
-                    table.Columns.Add("StartDate", typeof(DateTime));
-                    table.Columns.Add("EndDate", typeof(DateTime));
-                    table.Columns.Add("IsActive", typeof(bool));
-
-                    foreach (var row in db.Promotions
-                        .ToList()
-                        .Select(p => new
-                        {
-                            p.PromotionCode,
-                            p.StartDate,
-                            p.EndDate,
-                            p.IsActive
-                        }))
-                    {
-                        table.Rows.Add(row.PromotionCode, row.StartDate, row.EndDate, row.IsActive);
-                    }
-                    break;
-            }
-
-            _allRows = table;
-
-            // Clamp page if new report has fewer rows
             if (_currentPage > TotalPages) _currentPage = Math.Max(1, TotalPages);
 
             RenderPage();
 
-            lblStatus.Text = $"Generated {_allRows.Rows.Count} rows at {DateTime.Now:HH:mm:ss}";
+            lblStatus.Text = $"Generated {_allRows.Count} rows at {DateTime.Now:HH:mm:ss}";
         }
         catch (Exception ex)
         {
@@ -274,7 +237,7 @@ public partial class FrmReports : Form
         get
         {
             if (PageSize == int.MaxValue) return 1;
-            int total = _allRows.Rows.Count;
+            int total = _allRows.Count;
             return Math.Max(1, (int)Math.Ceiling(total / (double)PageSize));
         }
     }
@@ -291,34 +254,26 @@ public partial class FrmReports : Form
     private void RenderPage()
     {
         int size = PageSize;
-        DataTable pageTable;
+        List<ReportRow> pageRows;
 
         if (size == int.MaxValue)
-        {
-            pageTable = _allRows;
-        }
+            pageRows = _allRows;
         else
-        {
-            pageTable = _allRows.Clone();   // same schema, no rows
-            int skip = (_currentPage - 1) * size;
-            int take = Math.Min(size, _allRows.Rows.Count - skip);
+            pageRows = _allRows.Skip((_currentPage - 1) * size).Take(size).ToList();
 
-            for (int i = 0; i < take; i++)
-                pageTable.ImportRow(_allRows.Rows[skip + i]);
-        }
-
-        gridReport.DataSource = pageTable;
+        var table = BuildDataTable(pageRows);
+        gridReport.DataSource = table;
 
         int total = TotalPages;
         lblPageInfo.Text = $"Page {_currentPage} of {total}";
 
-        int first = _allRows.Rows.Count == 0
+        int first = _allRows.Count == 0
             ? 0
-            : ((_currentPage - 1) * (size == int.MaxValue ? _allRows.Rows.Count : size)) + 1;
+            : ((_currentPage - 1) * (size == int.MaxValue ? _allRows.Count : size)) + 1;
         int last = size == int.MaxValue
-            ? _allRows.Rows.Count
-            : Math.Min(_currentPage * size, _allRows.Rows.Count);
-        lblShowing.Text = $"Showing {first}–{last} of {_allRows.Rows.Count}";
+            ? _allRows.Count
+            : Math.Min(_currentPage * size, _allRows.Count);
+        lblShowing.Text = $"Showing {first}–{last} of {_allRows.Count}";
 
         bool multiPage = total > 1;
         btnFirstPage.Enabled = multiPage && _currentPage > 1;
@@ -327,13 +282,47 @@ public partial class FrmReports : Form
         btnLastPage.Enabled = multiPage && _currentPage < total;
     }
 
+    private DataTable BuildDataTable(List<ReportRow> rows)
+    {
+        var table = new DataTable();
+
+        foreach (var col in _columns)
+        {
+            Type t = typeof(string);
+
+            foreach (var row in rows)
+            {
+                if (row.Cells.TryGetValue(col, out var v) && v is not null)
+                {
+                    t = v.GetType();
+                    break;
+                }
+            }
+
+            table.Columns.Add(col, t);
+        }
+
+        foreach (var row in rows)
+        {
+            var values = new object?[_columns.Count];
+            for (int i = 0; i < _columns.Count; i++)
+            {
+                row.Cells.TryGetValue(_columns[i], out var v);
+                values[i] = v ?? DBNull.Value;
+            }
+            table.Rows.Add(values);
+        }
+
+        return table;
+    }
+
     // ============================================================
-    //  PDF EXPORT — uses the FULL dataset, not just the current page
+    //  PDF EXPORT — full dataset, not just the current page
     // ============================================================
 
     private void ExportToPdf()
     {
-        if (_allRows.Rows.Count == 0)
+        if (_allRows.Count == 0)
         {
             MessageBox.Show("Nothing to export. Generate a report first.",
                 "Export", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -350,14 +339,14 @@ public partial class FrmReports : Form
 
         try
         {
-            var columns = _allRows.Columns
-                .Cast<DataColumn>()
-                .Select(c => c.ColumnName)
-                .ToList();
+            var columns = _columns;
 
-            var rows = _allRows.Rows
-                .Cast<DataRow>()
-                .Select(r => columns.Select(c => FormatCell(r[c])).ToList())
+            var rows = _allRows
+                .Select(r => columns.Select(c =>
+                {
+                    r.Cells.TryGetValue(c, out var v);
+                    return FormatCell(v);
+                }).ToList())
                 .ToList();
 
             var reportTitle = cmbReportType.SelectedItem?.ToString() ?? "Report";

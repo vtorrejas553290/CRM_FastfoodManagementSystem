@@ -5,15 +5,13 @@
         private System.ComponentModel.IContainer components = null;
 
         private System.Windows.Forms.Panel pnlTop;
-        private System.Windows.Forms.Panel pnlGridWrap;
+        private System.Windows.Forms.TableLayoutPanel tblHeader;
+        private System.Windows.Forms.FlowLayoutPanel flowSearch;
         private System.Windows.Forms.TextBox txtSearch;
-        private System.Windows.Forms.Button btnRefresh;
         private System.Windows.Forms.CheckBox chkShowArchived;
         private System.Windows.Forms.Label lblStatus;
         private System.Windows.Forms.DataGridView gridInventory;
-
-        // Layout (top)
-        private System.Windows.Forms.TableLayoutPanel tblTop;
+        private System.Windows.Forms.Panel pnlGridWrap;
 
         // Pagination bar (bottom)
         private System.Windows.Forms.Panel pnlPager;
@@ -39,13 +37,13 @@
         private void InitializeComponent()
         {
             this.pnlTop = new System.Windows.Forms.Panel();
-            this.pnlGridWrap = new System.Windows.Forms.Panel();
+            this.tblHeader = new System.Windows.Forms.TableLayoutPanel();
+            this.flowSearch = new System.Windows.Forms.FlowLayoutPanel();
             this.txtSearch = new System.Windows.Forms.TextBox();
-            this.btnRefresh = new System.Windows.Forms.Button();
             this.chkShowArchived = new System.Windows.Forms.CheckBox();
             this.lblStatus = new System.Windows.Forms.Label();
             this.gridInventory = new System.Windows.Forms.DataGridView();
-            this.tblTop = new System.Windows.Forms.TableLayoutPanel();
+            this.pnlGridWrap = new System.Windows.Forms.Panel();
 
             this.pnlPager = new System.Windows.Forms.Panel();
             this.tblPager = new System.Windows.Forms.TableLayoutPanel();
@@ -61,8 +59,9 @@
             this.lblShowing = new System.Windows.Forms.Label();
 
             this.pnlTop.SuspendLayout();
+            this.tblHeader.SuspendLayout();
+            this.flowSearch.SuspendLayout();
             this.pnlGridWrap.SuspendLayout();
-            this.tblTop.SuspendLayout();
             this.pnlPager.SuspendLayout();
             this.tblPager.SuspendLayout();
             this.flowPageSize.SuspendLayout();
@@ -71,48 +70,56 @@
             this.SuspendLayout();
 
             // ============================================================
-            // pnlTop — unchanged from previous version
+            // pnlTop
             // ============================================================
             this.pnlTop.Dock = System.Windows.Forms.DockStyle.Top;
-            this.pnlTop.Height = 65;
+            this.pnlTop.Height = 108;
             this.pnlTop.BackColor = System.Drawing.Color.White;
-            this.pnlTop.Padding = new System.Windows.Forms.Padding(16, 14, 16, 14);
+            this.pnlTop.Padding = new System.Windows.Forms.Padding(16, 14, 16, 8);
 
-            this.tblTop.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.tblTop.ColumnCount = 3;
-            this.tblTop.RowCount = 1;
-            this.tblTop.Padding = new System.Windows.Forms.Padding(0);
-            this.tblTop.Margin = new System.Windows.Forms.Padding(0);
+            // tblHeader — 1 column × 2 rows
+            //   Row 0: Search
+            //   Row 1: Show Archived
+            this.tblHeader.Dock = System.Windows.Forms.DockStyle.Top;
+            this.tblHeader.Height = 74;
+            this.tblHeader.ColumnCount = 1;
+            this.tblHeader.RowCount = 2;
+            this.tblHeader.Padding = new System.Windows.Forms.Padding(0);
+            this.tblHeader.Margin = new System.Windows.Forms.Padding(0);
 
-            this.tblTop.ColumnStyles.Add(
+            this.tblHeader.ColumnStyles.Add(
                 new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.tblTop.ColumnStyles.Add(
-                new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 110F));
-            this.tblTop.ColumnStyles.Add(
-                new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 170F));
 
-            this.tblTop.RowStyles.Add(
-                new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 36F));
+            this.tblHeader.RowStyles.Add(
+                new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 40F));
+            this.tblHeader.RowStyles.Add(
+                new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 30F));
 
-            this.txtSearch.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.txtSearch.Margin = new System.Windows.Forms.Padding(0, 0, 10, 0);
+            // ---- Row 0: flowSearch ----
+            this.flowSearch.AutoSize = true;
+            this.flowSearch.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            this.flowSearch.FlowDirection = System.Windows.Forms.FlowDirection.LeftToRight;
+            this.flowSearch.WrapContents = false;
+            this.flowSearch.Anchor = System.Windows.Forms.AnchorStyles.Left;
+            this.flowSearch.Margin = new System.Windows.Forms.Padding(0);
+            this.flowSearch.Padding = new System.Windows.Forms.Padding(0);
+
+            this.txtSearch.Width = 420;
+            this.txtSearch.Margin = new System.Windows.Forms.Padding(0);
             this.txtSearch.PlaceholderText = "Search products...";
 
-            this.btnRefresh.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.btnRefresh.Margin = new System.Windows.Forms.Padding(0, 0, 10, 0);
-            this.btnRefresh.Text = "Refresh";
+            this.flowSearch.Controls.Add(this.txtSearch);
 
-            this.chkShowArchived.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.chkShowArchived.Margin = new System.Windows.Forms.Padding(0);
+            // ---- Row 1: chkShowArchived ----
+            this.chkShowArchived.AutoSize = true;
+            this.chkShowArchived.Margin = new System.Windows.Forms.Padding(0, 6, 0, 0);
             this.chkShowArchived.Text = "Show Archived";
-            this.chkShowArchived.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             this.chkShowArchived.UseVisualStyleBackColor = true;
 
-            this.tblTop.Controls.Add(this.txtSearch, 0, 0);
-            this.tblTop.Controls.Add(this.btnRefresh, 1, 0);
-            this.tblTop.Controls.Add(this.chkShowArchived, 2, 0);
+            this.tblHeader.Controls.Add(this.flowSearch, 0, 0);
+            this.tblHeader.Controls.Add(this.chkShowArchived, 0, 1);
 
-            this.pnlTop.Controls.Add(this.tblTop);
+            this.pnlTop.Controls.Add(this.tblHeader);
 
             // ============================================================
             // pnlGridWrap
@@ -137,14 +144,13 @@
             this.pnlGridWrap.Controls.Add(this.gridInventory);
 
             // ============================================================
-            // pnlPager — pagination bar (redesigned)
+            // pnlPager
             // ============================================================
             this.pnlPager.Dock = System.Windows.Forms.DockStyle.Bottom;
             this.pnlPager.Height = 52;
             this.pnlPager.BackColor = System.Drawing.Color.White;
             this.pnlPager.Padding = new System.Windows.Forms.Padding(16, 8, 16, 8);
 
-            // tblPager: [page size group] [nav cluster] [showing label (right)]
             this.tblPager.Dock = System.Windows.Forms.DockStyle.Fill;
             this.tblPager.ColumnCount = 3;
             this.tblPager.RowCount = 1;
@@ -161,7 +167,6 @@
             this.tblPager.RowStyles.Add(
                 new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
 
-            // ---- flowPageSize: "Rows per page:" + combo ----
             this.flowPageSize.AutoSize = true;
             this.flowPageSize.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
             this.flowPageSize.FlowDirection = System.Windows.Forms.FlowDirection.LeftToRight;
@@ -182,7 +187,6 @@
             this.flowPageSize.Controls.Add(this.lblPageSize);
             this.flowPageSize.Controls.Add(this.cmbPageSize);
 
-            // ---- tblNav: [ « ] [ ‹ ] [ Page X of Y ] [ › ] [ » ] ----
             this.tblNav.AutoSize = true;
             this.tblNav.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
             this.tblNav.ColumnCount = 5;
@@ -205,35 +209,30 @@
             this.tblNav.RowStyles.Add(
                 new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 34F));
 
-            // btnFirstPage «
             this.btnFirstPage.Dock = System.Windows.Forms.DockStyle.Fill;
             this.btnFirstPage.Margin = new System.Windows.Forms.Padding(0, 0, 4, 0);
             this.btnFirstPage.Font = new System.Drawing.Font("Segoe UI", 11F, System.Drawing.FontStyle.Bold);
             this.btnFirstPage.Text = "«";
             this.btnFirstPage.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
 
-            // btnPrevPage ‹
             this.btnPrevPage.Dock = System.Windows.Forms.DockStyle.Fill;
             this.btnPrevPage.Margin = new System.Windows.Forms.Padding(0, 0, 4, 0);
             this.btnPrevPage.Font = new System.Drawing.Font("Segoe UI", 11F, System.Drawing.FontStyle.Bold);
             this.btnPrevPage.Text = "‹";
             this.btnPrevPage.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
 
-            // lblPageInfo
             this.lblPageInfo.Dock = System.Windows.Forms.DockStyle.Fill;
             this.lblPageInfo.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.lblPageInfo.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Bold);
             this.lblPageInfo.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             this.lblPageInfo.Text = "Page 1 of 1";
 
-            // btnNextPage ›
             this.btnNextPage.Dock = System.Windows.Forms.DockStyle.Fill;
             this.btnNextPage.Margin = new System.Windows.Forms.Padding(0, 0, 4, 0);
             this.btnNextPage.Font = new System.Drawing.Font("Segoe UI", 11F, System.Drawing.FontStyle.Bold);
             this.btnNextPage.Text = "›";
             this.btnNextPage.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
 
-            // btnLastPage »
             this.btnLastPage.Dock = System.Windows.Forms.DockStyle.Fill;
             this.btnLastPage.Margin = new System.Windows.Forms.Padding(0);
             this.btnLastPage.Font = new System.Drawing.Font("Segoe UI", 11F, System.Drawing.FontStyle.Bold);
@@ -246,7 +245,6 @@
             this.tblNav.Controls.Add(this.btnNextPage, 3, 0);
             this.tblNav.Controls.Add(this.btnLastPage, 4, 0);
 
-            // ---- lblShowing ----
             this.lblShowing.AutoSize = true;
             this.lblShowing.Anchor = System.Windows.Forms.AnchorStyles.Right;
             this.lblShowing.Margin = new System.Windows.Forms.Padding(0);
@@ -271,8 +269,8 @@
             // ============================================================
             // FrmInventoryManagement
             // ============================================================
-            this.ClientSize = new System.Drawing.Size(1100, 680);
-            this.MinimumSize = new System.Drawing.Size(900, 560);
+            this.ClientSize = new System.Drawing.Size(1150, 680);
+            this.MinimumSize = new System.Drawing.Size(950, 560);
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "Inventory Management";
             this.Controls.Add(this.pnlGridWrap);
@@ -281,7 +279,11 @@
             this.Controls.Add(this.pnlTop);
 
             this.pnlTop.ResumeLayout(false);
-            this.tblTop.ResumeLayout(false);
+            this.pnlTop.PerformLayout();
+            this.tblHeader.ResumeLayout(false);
+            this.tblHeader.PerformLayout();
+            this.flowSearch.ResumeLayout(false);
+            this.flowSearch.PerformLayout();
             this.pnlGridWrap.ResumeLayout(false);
             this.pnlPager.ResumeLayout(false);
             this.tblPager.ResumeLayout(false);

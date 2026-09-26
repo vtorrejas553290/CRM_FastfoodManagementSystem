@@ -1,6 +1,7 @@
 ﻿using CRM.domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using System.Text.RegularExpressions;
+using CRM.infrastructure;
 
 namespace CRM.winForms.Forms;
 
@@ -8,6 +9,12 @@ public partial class FrmRegisterCustomer : Form
 {
     private readonly int? _customerId;
     private int? _activeTermsId;
+
+    /// <summary>
+    /// True if the customer being edited has already accepted the CURRENT
+    /// active terms. In edit mode, this locks the checkbox to checked state.
+    /// </summary>
+    private bool _alreadyAcceptedCurrentTerms = false;
 
     public FrmRegisterCustomer() : this(null) { }
 
@@ -21,6 +28,9 @@ public partial class FrmRegisterCustomer : Form
         btnSave.Click += BtnSave_Click;
         btnCancel.Click += (_, __) => { DialogResult = DialogResult.Cancel; Close(); };
         btnViewTerms.Click += BtnViewTerms_Click;
+
+        // Enable / disable Save in response to the checkbox.
+        chkAcceptTerms.CheckedChanged += (_, __) => UpdateSaveEnabled();
 
         Load += FrmRegisterCustomer_Load;
     }
@@ -44,15 +54,28 @@ public partial class FrmRegisterCustomer : Form
         AppTheme.StyleNeutralButton(btnCancel);
 
         lblStatus.Font = AppTheme.FontSmall;
+
+        chkAcceptTerms.Font = AppTheme.FontBody;
+        chkAcceptTerms.ForeColor = AppTheme.TextPrimary;
     }
 
     private void FrmRegisterCustomer_Load(object? sender, EventArgs e)
     {
         LoadActiveTerms();
 
-        if (_customerId is null) return;
+        if (_customerId is null)
+        {
+            // ---- CREATE MODE ----
+            // Start unchecked. Save button will be disabled until the user
+            // ticks the box (if there are terms to accept).
+            _alreadyAcceptedCurrentTerms = false;
+            chkAcceptTerms.Checked = false;
+            chkAcceptTerms.Enabled = _activeTermsId is not null;
+            UpdateSaveEnabled();
+            return;
+        }
 
-        // EDIT MODE — prefill
+        // ---- EDIT MODE ----
         try
         {
             using var db = AppServices.CreateTenantContext();
@@ -69,9 +92,36 @@ public partial class FrmRegisterCustomer : Form
             txtAddress.Text = c.Address;
             dtpBirthday.Value = c.Birthday ?? DateTime.Today;
 
-            chkAcceptTerms.Enabled = false;
-            chkAcceptTerms.Text = "Terms already recorded (cannot be changed here)";
-            btnViewTerms.Enabled = true;
+            // Does this customer already have an acceptance of the active terms?
+            if (_activeTermsId is not null)
+            {
+                _alreadyAcceptedCurrentTerms = db.TermsAcceptances
+                    .AsNoTracking()
+                    .Any(a => a.CustomerId == _customerId.Value
+                           && a.TermsAndConditionId == _activeTermsId.Value);
+
+                if (_alreadyAcceptedCurrentTerms)
+                {
+                    // Locked: checked + disabled.
+                    chkAcceptTerms.Checked = true;
+                    chkAcceptTerms.Enabled = false;
+                    chkAcceptTerms.Text = "Customer accepted Terms & Conditions (cannot be changed)";
+                }
+                else
+                {
+                    // Not accepted yet: unchecked, enabled, required to save.
+                    chkAcceptTerms.Checked = false;
+                    chkAcceptTerms.Enabled = true;
+                    chkAcceptTerms.Text = "Customer accepted Terms & Conditions";
+                }
+            }
+            else
+            {
+                chkAcceptTerms.Enabled = false;
+                chkAcceptTerms.Checked = false;
+            }
+
+            UpdateSaveEnabled();
         }
         catch (Exception ex)
         {
@@ -132,9 +182,6 @@ public partial class FrmRegisterCustomer : Form
         viewer.ShowDialog(this);
     }
 
-    /// <summary>
-    /// Builds the display name: "First Middle Last" (middle omitted if empty).
-    /// </summary>
     private static string ComposeFullName(string firstName, string? middleName, string lastName)
     {
         var parts = new List<string> { firstName.Trim() };
@@ -145,6 +192,21 @@ public partial class FrmRegisterCustomer : Form
         parts.Add(lastName.Trim());
 
         return string.Join(" ", parts);
+    }
+
+    /// <summary>
+    /// Called when the agreement checkbox changes, or when the form loads.
+    /// Save is enabled unless there are terms that the customer hasn't accepted yet
+    /// and the checkbox is unchecked.
+    /// </summary>
+    private void UpdateSaveEnabled()
+    {
+        bool termsExist = _activeTermsId is not null;
+        bool mustAccept = termsExist && !_alreadyAcceptedCurrentTerms;
+        bool accepted = chkAcceptTerms.Checked;
+
+        // Save is enabled unless the user is required to accept and hasn't.
+        btnSave.Enabled = !(mustAccept && !accepted);
     }
 
     private void BtnSave_Click(object? sender, EventArgs e)
@@ -196,7 +258,22 @@ public partial class FrmRegisterCustomer : Form
             return;
         }
 
-        // Compose full display name
+        // ============ TERMS ENFORCEMENT ============
+        // Hard gate: if the customer hasn't already accepted and there ARE
+        // active terms, require the checkbox to be checked.
+        bool termsExist = _activeTermsId is not null;
+
+        if (termsExist && !_alreadyAcceptedCurrentTerms && !chkAcceptTerms.Checked)
+        {
+            lblStatus.Text = "Please accept the Terms and Conditions before saving.";
+            MessageBox.Show(
+                "The customer must accept the Terms and Conditions before you can save.",
+                "Terms Required",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning);
+            return;
+        }
+
         string firstName = txtFirstName.Text.Trim();
         string? middleName = string.IsNullOrWhiteSpace(txtMiddleName.Text) ? null : txtMiddleName.Text.Trim();
         string lastName = txtLastName.Text.Trim();
@@ -234,6 +311,7 @@ public partial class FrmRegisterCustomer : Form
                 db.Customers.Add(customer);
                 db.SaveChanges();
 
+                // Record the acceptance now that we have the new customer id.
                 if (chkAcceptTerms.Checked && _activeTermsId is not null)
                 {
                     db.TermsAcceptances.Add(new TermsAcceptance
@@ -275,6 +353,25 @@ public partial class FrmRegisterCustomer : Form
                 customer.Birthday = dtpBirthday.Value.Date;
 
                 db.SaveChanges();
+
+                // If a newer terms version is active and the user just accepted it,
+                // write the acceptance row now.
+                if (termsExist
+                    && !_alreadyAcceptedCurrentTerms
+                    && chkAcceptTerms.Checked
+                    && _activeTermsId is not null)
+                {
+                    db.TermsAcceptances.Add(new TermsAcceptance
+                    {
+                        TermsAndConditionId = _activeTermsId.Value,
+                        CustomerId = customer.CustomerId,
+                        AcceptedAt = DateTime.UtcNow,
+                        IpAddress = "127.0.0.1"
+                    });
+                    db.SaveChanges();
+
+                    _alreadyAcceptedCurrentTerms = true;
+                }
 
                 ActivityLogger.Log("Update", "Customer", customer.CustomerId,
                     $"Customer '{fullName}' updated");

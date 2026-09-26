@@ -6,11 +6,15 @@
 
         // Header
         private System.Windows.Forms.Panel pnlHeader;
-        private System.Windows.Forms.Label lblHeaderTitle;
+        private System.Windows.Forms.TableLayoutPanel tblHeader;
         private System.Windows.Forms.Label lblHeaderSubtitle;
-        private System.Windows.Forms.Button btnRefresh;
-        private System.Windows.Forms.ComboBox cmbDateRange;
+        private System.Windows.Forms.FlowLayoutPanel flowHeaderFilters;
         private System.Windows.Forms.Label lblDateRange;
+        private System.Windows.Forms.ComboBox cmbDateRange;
+        private System.Windows.Forms.Label lblFromDate;
+        private System.Windows.Forms.DateTimePicker dtpFromDate;
+        private System.Windows.Forms.Label lblToDate;
+        private System.Windows.Forms.DateTimePicker dtpToDate;
 
         // Body
         private System.Windows.Forms.Panel pnlBody;
@@ -18,7 +22,7 @@
         // KPI grids
         private System.Windows.Forms.TableLayoutPanel tblKpiRow1;
         private System.Windows.Forms.TableLayoutPanel tblKpiRow2;
-        private System.Windows.Forms.TableLayoutPanel tblKpiRow3;   // NEW
+        private System.Windows.Forms.TableLayoutPanel tblKpiRow3;
         private System.Windows.Forms.Panel cardRevenue;
         private System.Windows.Forms.Panel cardTodaySales;
         private System.Windows.Forms.Panel cardOrders;
@@ -30,7 +34,6 @@
         private System.Windows.Forms.Panel cardAvgRating;
         private System.Windows.Forms.Panel cardPromos;
 
-        // NEW: Retention KPI cards
         private System.Windows.Forms.Panel cardAtRisk;
         private System.Windows.Forms.Panel cardDormant;
         private System.Windows.Forms.Panel cardNeverOrdered;
@@ -44,26 +47,26 @@
         // Charts
         private System.Windows.Forms.TableLayoutPanel tblChartsRow1;
         private System.Windows.Forms.TableLayoutPanel tblChartsRow2;
-        private System.Windows.Forms.TableLayoutPanel tblChartsRow3;   // NEW
+        private System.Windows.Forms.TableLayoutPanel tblChartsRow3;
         private System.Windows.Forms.Panel pnlSalesChart;
         private System.Windows.Forms.Panel pnlTopProductsChart;
         private System.Windows.Forms.Panel pnlRatingChart;
         private System.Windows.Forms.Panel pnlPaymentChart;
-        private System.Windows.Forms.Panel pnlRetentionSplitChart;      // NEW
-        private System.Windows.Forms.Panel pnlRetentionRecencyChart;   // NEW
+        private System.Windows.Forms.Panel pnlRetentionSplitChart;
+        private System.Windows.Forms.Panel pnlRetentionRecencyChart;
 
         // Tables
         private System.Windows.Forms.TableLayoutPanel tblTables;
-        private System.Windows.Forms.TableLayoutPanel tblRetentionRow;  // NEW
+        private System.Windows.Forms.TableLayoutPanel tblRetentionRow;
         private System.Windows.Forms.Panel pnlRecentOrders;
         private System.Windows.Forms.Panel pnlTopCustomers;
-        private System.Windows.Forms.Panel pnlAtRiskList;               // NEW
+        private System.Windows.Forms.Panel pnlAtRiskList;
         private System.Windows.Forms.Label lblRecentOrders;
         private System.Windows.Forms.Label lblTopCustomers;
-        private System.Windows.Forms.Label lblAtRiskTitle;              // NEW
+        private System.Windows.Forms.Label lblAtRiskTitle;
         private System.Windows.Forms.DataGridView gridRecentOrders;
         private System.Windows.Forms.DataGridView gridTopCustomers;
-        private System.Windows.Forms.DataGridView gridAtRisk;           // NEW
+        private System.Windows.Forms.DataGridView gridAtRisk;
 
         private System.Windows.Forms.Label lblStatus;
 
@@ -77,11 +80,15 @@
         private void InitializeComponent()
         {
             this.pnlHeader = new System.Windows.Forms.Panel();
-            this.lblHeaderTitle = new System.Windows.Forms.Label();
+            this.tblHeader = new System.Windows.Forms.TableLayoutPanel();
             this.lblHeaderSubtitle = new System.Windows.Forms.Label();
+            this.flowHeaderFilters = new System.Windows.Forms.FlowLayoutPanel();
             this.lblDateRange = new System.Windows.Forms.Label();
             this.cmbDateRange = new System.Windows.Forms.ComboBox();
-            this.btnRefresh = new System.Windows.Forms.Button();
+            this.lblFromDate = new System.Windows.Forms.Label();
+            this.dtpFromDate = new System.Windows.Forms.DateTimePicker();
+            this.lblToDate = new System.Windows.Forms.Label();
+            this.dtpToDate = new System.Windows.Forms.DateTimePicker();
 
             this.pnlBody = new System.Windows.Forms.Panel();
 
@@ -95,13 +102,11 @@
             this.cardAvgOrder = new System.Windows.Forms.Panel();
             this.cardCustomers = new System.Windows.Forms.Panel();
             this.cardPoints = new System.Windows.Forms.Panel();
-
             this.cardLowStock = new System.Windows.Forms.Panel();
             this.cardOpenFeedback = new System.Windows.Forms.Panel();
             this.cardAvgRating = new System.Windows.Forms.Panel();
             this.cardPromos = new System.Windows.Forms.Panel();
 
-            // NEW
             this.cardAtRisk = new System.Windows.Forms.Panel();
             this.cardDormant = new System.Windows.Forms.Panel();
             this.cardNeverOrdered = new System.Windows.Forms.Panel();
@@ -136,6 +141,8 @@
             this.lblStatus = new System.Windows.Forms.Label();
 
             this.pnlHeader.SuspendLayout();
+            this.tblHeader.SuspendLayout();
+            this.flowHeaderFilters.SuspendLayout();
             this.pnlBody.SuspendLayout();
             this.pnlInsights.SuspendLayout();
             this.pnlRecentOrders.SuspendLayout();
@@ -146,56 +153,107 @@
             ((System.ComponentModel.ISupportInitialize)(this.gridAtRisk)).BeginInit();
             this.SuspendLayout();
 
-            // pnlHeader (unchanged)
+            // ============================================================
+            // pnlHeader — hosts a two-column TableLayoutPanel
+            //   Col 0 (fill) : subtitle
+            //   Col 1 (auto) : the filters FlowLayoutPanel
+            // ============================================================
             this.pnlHeader.Dock = System.Windows.Forms.DockStyle.Top;
             this.pnlHeader.Height = 96;
             this.pnlHeader.BackColor = System.Drawing.Color.White;
             this.pnlHeader.Padding = new System.Windows.Forms.Padding(24, 18, 24, 18);
+            this.pnlHeader.Controls.Add(this.tblHeader);
 
-            this.lblHeaderTitle.AutoSize = true;
-            this.lblHeaderTitle.Font = new System.Drawing.Font("Segoe UI", 16F, System.Drawing.FontStyle.Bold);
-            this.lblHeaderTitle.ForeColor = System.Drawing.Color.FromArgb(25, 35, 50);
-            this.lblHeaderTitle.Location = new System.Drawing.Point(24, 18);
-            this.lblHeaderTitle.Text = "Business Intelligence";
+            // tblHeader
+            this.tblHeader.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.tblHeader.ColumnCount = 2;
+            this.tblHeader.RowCount = 1;
+            this.tblHeader.Padding = new System.Windows.Forms.Padding(0);
+            this.tblHeader.Margin = new System.Windows.Forms.Padding(0);
 
+            this.tblHeader.ColumnStyles.Add(
+                new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            this.tblHeader.ColumnStyles.Add(
+                new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.AutoSize));
+
+            this.tblHeader.RowStyles.Add(
+                new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
+
+            // lblHeaderSubtitle — column 0, left
             this.lblHeaderSubtitle.AutoSize = true;
-            this.lblHeaderSubtitle.Font = new System.Drawing.Font("Segoe UI", 9F);
+            this.lblHeaderSubtitle.Font = new System.Drawing.Font("Segoe UI", 10F);
             this.lblHeaderSubtitle.ForeColor = System.Drawing.Color.FromArgb(110, 120, 135);
-            this.lblHeaderSubtitle.Location = new System.Drawing.Point(26, 50);
+            this.lblHeaderSubtitle.Margin = new System.Windows.Forms.Padding(2, 0, 2, 0);
             this.lblHeaderSubtitle.Text = "Live KPIs, analytics, and auto-generated insights";
+            this.lblHeaderSubtitle.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            this.lblHeaderSubtitle.Anchor = System.Windows.Forms.AnchorStyles.Left;
 
+            // flowHeaderFilters — column 1, right, auto-sized
+            this.flowHeaderFilters.AutoSize = true;
+            this.flowHeaderFilters.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            this.flowHeaderFilters.FlowDirection = System.Windows.Forms.FlowDirection.LeftToRight;
+            this.flowHeaderFilters.WrapContents = false;
+            this.flowHeaderFilters.Padding = new System.Windows.Forms.Padding(0);
+            this.flowHeaderFilters.Margin = new System.Windows.Forms.Padding(0);
+            this.flowHeaderFilters.BackColor = System.Drawing.Color.Transparent;
+            this.flowHeaderFilters.Dock = System.Windows.Forms.DockStyle.Right;
+
+            // lblDateRange
             this.lblDateRange.AutoSize = true;
             this.lblDateRange.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
             this.lblDateRange.ForeColor = System.Drawing.Color.FromArgb(90, 100, 115);
-            this.lblDateRange.Location = new System.Drawing.Point(370, 22);
-            this.lblDateRange.Text = "DATE RANGE";
+            this.lblDateRange.Margin = new System.Windows.Forms.Padding(0, 12, 6, 0);
+            this.lblDateRange.Text = "PERIOD";
 
+            // cmbDateRange
             this.cmbDateRange.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.cmbDateRange.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.cmbDateRange.Location = new System.Drawing.Point(370, 42);
-            this.cmbDateRange.Size = new System.Drawing.Size(180, 29);
+            this.cmbDateRange.Size = new System.Drawing.Size(160, 29);
+            this.cmbDateRange.Margin = new System.Windows.Forms.Padding(0, 4, 16, 0);
 
-            this.btnRefresh.Anchor =
-                System.Windows.Forms.AnchorStyles.Top |
-                System.Windows.Forms.AnchorStyles.Right;
-            this.btnRefresh.Location = new System.Drawing.Point(1150, 40);
-            this.btnRefresh.Size = new System.Drawing.Size(130, 34);
-            this.btnRefresh.Text = "Refresh";
-            this.btnRefresh.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            // lblFromDate
+            this.lblFromDate.AutoSize = true;
+            this.lblFromDate.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
+            this.lblFromDate.ForeColor = System.Drawing.Color.FromArgb(90, 100, 115);
+            this.lblFromDate.Margin = new System.Windows.Forms.Padding(0, 12, 6, 0);
+            this.lblFromDate.Text = "FROM";
 
-            this.pnlHeader.Controls.Add(this.lblHeaderTitle);
-            this.pnlHeader.Controls.Add(this.lblHeaderSubtitle);
-            this.pnlHeader.Controls.Add(this.lblDateRange);
-            this.pnlHeader.Controls.Add(this.cmbDateRange);
-            this.pnlHeader.Controls.Add(this.btnRefresh);
+            // dtpFromDate
+            this.dtpFromDate.Format = System.Windows.Forms.DateTimePickerFormat.Short;
+            this.dtpFromDate.Size = new System.Drawing.Size(120, 29);
+            this.dtpFromDate.Margin = new System.Windows.Forms.Padding(0, 4, 16, 0);
 
+            // lblToDate
+            this.lblToDate.AutoSize = true;
+            this.lblToDate.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
+            this.lblToDate.ForeColor = System.Drawing.Color.FromArgb(90, 100, 115);
+            this.lblToDate.Margin = new System.Windows.Forms.Padding(0, 12, 6, 0);
+            this.lblToDate.Text = "TO";
+
+            // dtpToDate
+            this.dtpToDate.Format = System.Windows.Forms.DateTimePickerFormat.Short;
+            this.dtpToDate.Size = new System.Drawing.Size(120, 29);
+            this.dtpToDate.Margin = new System.Windows.Forms.Padding(0, 4, 0, 0);
+
+            this.flowHeaderFilters.Controls.Add(this.lblDateRange);
+            this.flowHeaderFilters.Controls.Add(this.cmbDateRange);
+            this.flowHeaderFilters.Controls.Add(this.lblFromDate);
+            this.flowHeaderFilters.Controls.Add(this.dtpFromDate);
+            this.flowHeaderFilters.Controls.Add(this.lblToDate);
+            this.flowHeaderFilters.Controls.Add(this.dtpToDate);
+
+            this.tblHeader.Controls.Add(this.lblHeaderSubtitle, 0, 0);
+            this.tblHeader.Controls.Add(this.flowHeaderFilters, 1, 0);
+
+            // ============================================================
             // pnlBody
+            // ============================================================
             this.pnlBody.Dock = System.Windows.Forms.DockStyle.Fill;
             this.pnlBody.AutoScroll = true;
             this.pnlBody.BackColor = System.Drawing.Color.FromArgb(245, 247, 250);
             this.pnlBody.Padding = new System.Windows.Forms.Padding(20);
 
-            // KPI ROW 1 — 6 cards
+            // KPI ROW 1
             this.tblKpiRow1.Dock = System.Windows.Forms.DockStyle.Top;
             this.tblKpiRow1.Height = 130;
             this.tblKpiRow1.ColumnCount = 6;
@@ -219,7 +277,7 @@
             this.tblKpiRow1.Controls.Add(this.cardCustomers, 4, 0);
             this.tblKpiRow1.Controls.Add(this.cardPoints, 5, 0);
 
-            // KPI ROW 2 — 4 cards
+            // KPI ROW 2
             this.tblKpiRow2.Dock = System.Windows.Forms.DockStyle.Top;
             this.tblKpiRow2.Height = 130;
             this.tblKpiRow2.ColumnCount = 4;
@@ -239,7 +297,7 @@
             this.tblKpiRow2.Controls.Add(this.cardAvgRating, 2, 0);
             this.tblKpiRow2.Controls.Add(this.cardPromos, 3, 0);
 
-            // NEW: KPI ROW 3 — 4 retention cards
+            // KPI ROW 3
             this.tblKpiRow3.Dock = System.Windows.Forms.DockStyle.Top;
             this.tblKpiRow3.Height = 130;
             this.tblKpiRow3.ColumnCount = 4;
@@ -259,7 +317,7 @@
             this.tblKpiRow3.Controls.Add(this.cardNeverOrdered, 2, 0);
             this.tblKpiRow3.Controls.Add(this.cardPointsLiability, 3, 0);
 
-            // Insights panel (unchanged)
+            // Insights panel
             this.pnlInsights.Dock = System.Windows.Forms.DockStyle.Top;
             this.pnlInsights.Height = 480;
             this.pnlInsights.BackColor = System.Drawing.Color.White;
@@ -283,7 +341,7 @@
             this.pnlInsights.Controls.Add(this.flowInsights);
             this.pnlInsights.Controls.Add(this.lblInsightsTitle);
 
-            // Charts row 1 (unchanged)
+            // Charts row 1
             this.tblChartsRow1.Dock = System.Windows.Forms.DockStyle.Top;
             this.tblChartsRow1.Height = 340;
             this.tblChartsRow1.ColumnCount = 2;
@@ -306,7 +364,7 @@
             this.tblChartsRow1.Controls.Add(this.pnlSalesChart, 0, 0);
             this.tblChartsRow1.Controls.Add(this.pnlTopProductsChart, 1, 0);
 
-            // Charts row 2 (unchanged)
+            // Charts row 2
             this.tblChartsRow2.Dock = System.Windows.Forms.DockStyle.Top;
             this.tblChartsRow2.Height = 340;
             this.tblChartsRow2.ColumnCount = 2;
@@ -329,7 +387,7 @@
             this.tblChartsRow2.Controls.Add(this.pnlRatingChart, 0, 0);
             this.tblChartsRow2.Controls.Add(this.pnlPaymentChart, 1, 0);
 
-            // NEW: Charts row 3 — retention
+            // Charts row 3
             this.tblChartsRow3.Dock = System.Windows.Forms.DockStyle.Top;
             this.tblChartsRow3.Height = 340;
             this.tblChartsRow3.ColumnCount = 2;
@@ -352,7 +410,7 @@
             this.tblChartsRow3.Controls.Add(this.pnlRetentionSplitChart, 0, 0);
             this.tblChartsRow3.Controls.Add(this.pnlRetentionRecencyChart, 1, 0);
 
-            // Tables (unchanged)
+            // Tables
             this.tblTables.Dock = System.Windows.Forms.DockStyle.Top;
             this.tblTables.Height = 420;
             this.tblTables.ColumnCount = 2;
@@ -401,7 +459,7 @@
             this.tblTables.Controls.Add(this.pnlRecentOrders, 0, 0);
             this.tblTables.Controls.Add(this.pnlTopCustomers, 1, 0);
 
-            // NEW: Retention at-risk table row (full width)
+            // Retention at-risk table row
             this.tblRetentionRow.Dock = System.Windows.Forms.DockStyle.Top;
             this.tblRetentionRow.Height = 380;
             this.tblRetentionRow.ColumnCount = 1;
@@ -439,7 +497,7 @@
 
             this.tblRetentionRow.Controls.Add(this.pnlAtRiskList, 0, 0);
 
-            // lblStatus (unchanged)
+            // lblStatus
             this.lblStatus.Dock = System.Windows.Forms.DockStyle.Bottom;
             this.lblStatus.Height = 28;
             this.lblStatus.Padding = new System.Windows.Forms.Padding(24, 0, 0, 0);
@@ -447,16 +505,16 @@
             this.lblStatus.Font = new System.Drawing.Font("Segoe UI", 8.5F);
             this.lblStatus.ForeColor = System.Drawing.Color.FromArgb(110, 120, 135);
 
-            // Add sections to body (last added = top)
-            this.pnlBody.Controls.Add(this.tblRetentionRow);     // bottom of scroll
+            // Assemble body
+            this.pnlBody.Controls.Add(this.tblRetentionRow);
             this.pnlBody.Controls.Add(this.tblTables);
-            this.pnlBody.Controls.Add(this.tblChartsRow3);       // NEW
+            this.pnlBody.Controls.Add(this.tblChartsRow3);
             this.pnlBody.Controls.Add(this.tblChartsRow2);
             this.pnlBody.Controls.Add(this.tblChartsRow1);
             this.pnlBody.Controls.Add(this.pnlInsights);
-            this.pnlBody.Controls.Add(this.tblKpiRow3);          // NEW
+            this.pnlBody.Controls.Add(this.tblKpiRow3);
             this.pnlBody.Controls.Add(this.tblKpiRow2);
-            this.pnlBody.Controls.Add(this.tblKpiRow1);          // top of scroll
+            this.pnlBody.Controls.Add(this.tblKpiRow1);
 
             // FrmBusinessIntelligence
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
@@ -471,6 +529,10 @@
 
             this.pnlHeader.ResumeLayout(false);
             this.pnlHeader.PerformLayout();
+            this.tblHeader.ResumeLayout(false);
+            this.tblHeader.PerformLayout();
+            this.flowHeaderFilters.ResumeLayout(false);
+            this.flowHeaderFilters.PerformLayout();
             this.pnlInsights.ResumeLayout(false);
             this.pnlRecentOrders.ResumeLayout(false);
             this.pnlTopCustomers.ResumeLayout(false);

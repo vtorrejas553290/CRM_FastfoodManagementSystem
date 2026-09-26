@@ -1,21 +1,19 @@
 ﻿using CRM.domain.Entities;
 using Microsoft.EntityFrameworkCore;
+using CRM.infrastructure;
 
 namespace CRM.winForms.Forms;
 
 public partial class FrmOrderManagement : Form
 {
-    // Conversion rate: 100 points = ₱1
     private const int PointsToPesoDivisor = 100;
 
     private readonly List<OrderItem> _cart = new();
     private List<Product> _allProducts = new();
 
-    // Promotion state
     private decimal _appliedDiscount = 0m;
     private int? _appliedPromotionId = null;
 
-    // Loyalty points state
     private int _customerPointsBalance = 0;
     private int _redeemedPoints = 0;
 
@@ -25,13 +23,28 @@ public partial class FrmOrderManagement : Form
         ApplyTheme();
 
         Load += FrmOrderManagement_Load;
-        btnNewOrder.Click += BtnNewOrder_Click;
         btnPay.Click += BtnPay_Click;
         btnApplyPromo.Click += (_, __) => ApplyPromotion();
         btnClearPromo.Click += (_, __) => ClearPromotion();
         btnRedeemPoints.Click += (_, __) => ApplyPointsRedemption();
         btnClearPoints.Click += (_, __) => ClearPointsRedemption();
+
         cmbCustomer.SelectedIndexChanged += (_, __) => RefreshCustomerPoints();
+
+        cmbCustomer.TextChanged += (_, __) =>
+        {
+            if (cmbCustomer.SelectedValue is null
+                && !string.IsNullOrWhiteSpace(cmbCustomer.Text))
+            {
+                lblStatus.ForeColor = AppTheme.Warning;
+                lblStatus.Text = $"No customer named \"{cmbCustomer.Text}\" — pick one from the list.";
+            }
+            else
+            {
+                lblStatus.Text = string.Empty;
+            }
+        };
+
         txtProductSearch.TextChanged += (_, __) => RenderProductTiles();
         cmbCategoryFilter.SelectedIndexChanged += (_, __) => RenderProductTiles();
         numAmountPaid.ValueChanged += (_, __) => UpdateChange();
@@ -50,7 +63,6 @@ public partial class FrmOrderManagement : Form
         AppTheme.StyleInput(cmbOrderType);
         AppTheme.StyleLabel(lblCustomer);
         AppTheme.StyleLabel(lblOrderType);
-        AppTheme.StyleSecondaryButton(btnNewOrder);
 
         pnlCatalog.BackColor = AppTheme.ContentSurface;
         pnlCatalogHeader.BackColor = AppTheme.Surface;
@@ -86,7 +98,6 @@ public partial class FrmOrderManagement : Form
         AppTheme.StylePrimaryButton(btnApplyPromo);
         AppTheme.StyleSecondaryButton(btnClearPromo);
 
-        // Loyalty points labels
         lblPointsBalance.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
         lblPointsBalance.ForeColor = AppTheme.SuccessGreen;
         AppTheme.StyleLabel(lblRedeemPoints);
@@ -121,7 +132,7 @@ public partial class FrmOrderManagement : Form
         LoadActivePromotions();
 
         cmbOrderType.Items.Clear();
-        cmbOrderType.Items.AddRange(new object[] { "DineIn", "TakeOut", "Delivery" });
+        cmbOrderType.Items.AddRange(new object[] { "DineIn", "TakeOut" });
         cmbOrderType.SelectedIndex = 0;
 
         cmbPaymentMethod.Items.Clear();
@@ -145,9 +156,11 @@ public partial class FrmOrderManagement : Form
             .Select(x => new { x.CustomerId, x.CustomerName })
             .ToList();
 
-        cmbCustomer.DataSource = customers;
         cmbCustomer.DisplayMember = "CustomerName";
         cmbCustomer.ValueMember = "CustomerId";
+        cmbCustomer.DataSource = customers;
+
+        cmbCustomer.SelectedIndex = -1;
     }
 
     private void LoadCategories()
@@ -226,7 +239,6 @@ public partial class FrmOrderManagement : Form
 
         lblPointsBalance.Text = $"Loyalty Points: {_customerPointsBalance:N0}  (= ₱{_customerPointsBalance / (decimal)PointsToPesoDivisor:N2})";
 
-        // If customer changed and had points redeemed, reset the redemption
         _redeemedPoints = 0;
         numRedeemPoints.Value = 0;
         UpdateTotals();
@@ -406,7 +418,7 @@ public partial class FrmOrderManagement : Form
 
         var lblCategory = new Label
         {
-            Text = p.Category?.CategoryName ?? "—",
+            Text = p.Category != null ? p.Category.CategoryName : "—",
             Font = new Font("Segoe UI", 7.5F, FontStyle.Italic),
             ForeColor = AppTheme.TextMuted,
             Location = new Point(12, 38),
@@ -422,7 +434,8 @@ public partial class FrmOrderManagement : Form
             AutoSize = true
         };
 
-        decimal stock = p.Inventory?.QuantityOnHand ?? 0;
+        decimal stock = p.Inventory != null ? p.Inventory.QuantityOnHand : 0;
+
         var lblStock = new Label
         {
             Text = $"Stock: {stock}",
@@ -451,16 +464,18 @@ public partial class FrmOrderManagement : Form
 
     private void AddProductToCart(Product p)
     {
-        if ((p.Inventory?.QuantityOnHand ?? 0) <= 0)
+        decimal stock = p.Inventory != null ? p.Inventory.QuantityOnHand : 0;
+
+        if (stock <= 0)
         {
             MessageBox.Show($"'{p.ProductName}' is out of stock.", "Out of stock");
             return;
         }
 
         int inCart = _cart.FirstOrDefault(x => x.ProductId == p.ProductId)?.Quantity ?? 0;
-        if (inCart + 1 > (p.Inventory?.QuantityOnHand ?? 0))
+        if (inCart + 1 > stock)
         {
-            MessageBox.Show($"Not enough stock. Available: {p.Inventory?.QuantityOnHand}", "Insufficient stock");
+            MessageBox.Show($"Not enough stock. Available: {stock}", "Insufficient stock");
             return;
         }
 
@@ -502,14 +517,12 @@ public partial class FrmOrderManagement : Form
         table.Columns.Add("Price", typeof(string));
         table.Columns.Add("Total", typeof(string));
 
-        using var db = AppServices.CreateTenantContext();
-
         foreach (var item in _cart)
         {
-            var p = db.Products.AsNoTracking().FirstOrDefault(pp => pp.ProductId == item.ProductId);
+            var p = _allProducts.FirstOrDefault(pp => pp.ProductId == item.ProductId);
             table.Rows.Add(
                 item.ProductId,
-                p?.ProductName ?? "(unknown)",
+                p != null ? p.ProductName : "(unknown)",
                 item.Quantity,
                 $"₱{item.UnitPrice:N2}",
                 $"₱{item.LineTotal:N2}");
@@ -692,24 +705,8 @@ public partial class FrmOrderManagement : Form
     }
 
     // ============================================================
-    //  RESET
+    //  RESET (called after every successful pay)
     // ============================================================
-
-    private void BtnNewOrder_Click(object? sender, EventArgs e)
-    {
-        if (_cart.Count > 0)
-        {
-            var confirm = MessageBox.Show(
-                "Discard the current cart and start a new order?",
-                "Discard order?",
-                MessageBoxButtons.YesNo,
-                MessageBoxIcon.Warning);
-
-            if (confirm != DialogResult.Yes) return;
-        }
-
-        ResetOrder();
-    }
 
     private void ResetOrder()
     {
@@ -732,7 +729,7 @@ public partial class FrmOrderManagement : Form
     }
 
     // ============================================================
-    //  PAY — SAVE ORDER, AWARD + REDEEM POINTS
+    //  PAY
     // ============================================================
 
     private void BtnPay_Click(object? sender, EventArgs e)
@@ -740,16 +737,15 @@ public partial class FrmOrderManagement : Form
         lblStatus.ForeColor = AppTheme.Error;
         lblStatus.Text = string.Empty;
 
-        // Validations
         if (_cart.Count == 0)
         {
             lblStatus.Text = "Cart is empty. Click a product tile to add items.";
             return;
         }
 
-        if (cmbCustomer.SelectedValue is null)
+        if (cmbCustomer.SelectedValue is not int customerId || customerId == 0)
         {
-            lblStatus.Text = "Customer is required. If not registered, use Register Customer first.";
+            lblStatus.Text = "Please select a customer from the dropdown.";
             return;
         }
 
@@ -774,17 +770,14 @@ public partial class FrmOrderManagement : Form
             return;
         }
 
-        // Calculate points earned
         int pointsEarned = (int)Math.Floor(total);
 
         string customerName = cmbCustomer.Text;
         string orderType = cmbOrderType.SelectedItem?.ToString() ?? "DineIn";
         string reference = txtReference.Text.Trim();
         decimal change = paid - total;
-        int customerId = (int)cmbCustomer.SelectedValue;
         int redeemedPoints = _redeemedPoints;
 
-        // Confirmation
         using var confirmDlg = new FrmOrderConfirmDialog(
             customerName,
             orderType,
@@ -809,7 +802,6 @@ public partial class FrmOrderManagement : Form
                 return;
             }
 
-            // 1) Save Order
             var order = new Order
             {
                 OrderCode = $"ORD-{DateTime.Now:yyyyMMddHHmmss}",
@@ -828,7 +820,6 @@ public partial class FrmOrderManagement : Form
             db.Orders.Add(order);
             db.SaveChanges();
 
-            // 2) Save order items + deduct inventory
             foreach (var item in _cart)
             {
                 item.OrderId = order.OrderId;
@@ -842,7 +833,6 @@ public partial class FrmOrderManagement : Form
                 }
             }
 
-            // 3) Promotion redemption
             if (_appliedPromotionId.HasValue && _appliedDiscount > 0)
             {
                 db.PromotionRedemptions.Add(new PromotionRedemption
@@ -855,7 +845,6 @@ public partial class FrmOrderManagement : Form
                 });
             }
 
-            // 4) Points redemption (deduct)
             if (redeemedPoints > 0)
             {
                 db.CustomerPoints.Add(new CustomerPoint
@@ -870,7 +859,6 @@ public partial class FrmOrderManagement : Form
                 });
             }
 
-            // 5) Points earned (add)
             if (pointsEarned > 0)
             {
                 db.CustomerPoints.Add(new CustomerPoint
@@ -885,10 +873,8 @@ public partial class FrmOrderManagement : Form
                 });
             }
 
-            // 6) Update customer's running balance
             customer.CurrentPoints += pointsEarned - redeemedPoints;
 
-            // 7) Transaction
             db.Transactions.Add(new Transaction
             {
                 OrderId = order.OrderId,
@@ -901,7 +887,6 @@ public partial class FrmOrderManagement : Form
 
             db.SaveChanges();
 
-            // 8) Activity logs
             ActivityLogger.Log("Order", "Order", order.OrderId,
                 $"Order {order.OrderCode} created — ₱{total:N2}");
 
@@ -920,25 +905,36 @@ public partial class FrmOrderManagement : Form
                     $"Earned {pointsEarned} points on {order.OrderCode}");
             }
 
-            // Success
-            string pointsMsg = "";
-            if (pointsEarned > 0 || redeemedPoints > 0)
-            {
-                pointsMsg = "\n\nLoyalty:";
-                if (redeemedPoints > 0) pointsMsg += $"\n  Redeemed: -{redeemedPoints:N0} points";
-                if (pointsEarned > 0) pointsMsg += $"\n  Earned:   +{pointsEarned:N0} points";
-                pointsMsg += $"\n  New Balance: {customer.CurrentPoints:N0} points";
-            }
+            // Show the receipt dialog before resetting the form.
+            var receiptItems = _cart
+                .Select(x => new OrderItem
+                {
+                    ProductId = x.ProductId,
+                    Quantity = x.Quantity,
+                    UnitPrice = x.UnitPrice,
+                    LineTotal = x.LineTotal,
+                    Product = _allProducts.FirstOrDefault(p => p.ProductId == x.ProductId)
+                })
+                .ToList();
 
-            MessageBox.Show(
-                $"Transaction complete.\n\nOrder: {order.OrderCode}\n" +
-                $"SubTotal: ₱{subTotal:N2}\n" +
-                (totalDiscount > 0 ? $"Discount: -₱{totalDiscount:N2}\n" : "") +
-                $"Total: ₱{total:N2}\nPaid: ₱{paid:N2}\nChange: ₱{change:N2}" +
-                pointsMsg,
-                "Payment Successful",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Information);
+            using var receipt = new FrmReceipt(
+                orderCode: order.OrderCode,
+                customerName: customerName,
+                orderType: orderType,
+                paymentMethod: method,
+                reference: reference,
+                subTotal: subTotal,
+                discount: totalDiscount,
+                total: total,
+                paid: paid,
+                change: change,
+                pointsRedeemed: redeemedPoints,
+                pointsEarned: pointsEarned,
+                newPointsBalance: customer.CurrentPoints,
+                items: receiptItems,
+                paidAt: order.OrderDate);
+
+            receipt.ShowDialog(this);
 
             ResetOrder();
         }

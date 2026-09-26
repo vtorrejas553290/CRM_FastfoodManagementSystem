@@ -1,12 +1,12 @@
 ﻿namespace CRM.winForms.Forms
 {
-    #nullable disable
     partial class FrmComplaints
     {
         private System.ComponentModel.IContainer components = null;
 
         private System.Windows.Forms.Panel pnlTop;
         private System.Windows.Forms.TableLayoutPanel tblFilters;
+        private System.Windows.Forms.FlowLayoutPanel flowSearch;
         private System.Windows.Forms.TextBox txtSearch;
         private System.Windows.Forms.FlowLayoutPanel flowCategory;
         private System.Windows.Forms.Label lblCategoryFilter;
@@ -15,7 +15,7 @@
         private System.Windows.Forms.Label lblStatusFilter;
         private System.Windows.Forms.ComboBox cmbStatusFilter;
         private System.Windows.Forms.CheckBox chkShowArchived;
-        private System.Windows.Forms.Button btnRefresh;
+        private System.Windows.Forms.FlowLayoutPanel flowButtons;
         private System.Windows.Forms.Button btnFileNew;
         private System.Windows.Forms.Label lblStatus;
 
@@ -46,6 +46,7 @@
         {
             this.pnlTop = new System.Windows.Forms.Panel();
             this.tblFilters = new System.Windows.Forms.TableLayoutPanel();
+            this.flowSearch = new System.Windows.Forms.FlowLayoutPanel();
             this.txtSearch = new System.Windows.Forms.TextBox();
             this.flowCategory = new System.Windows.Forms.FlowLayoutPanel();
             this.lblCategoryFilter = new System.Windows.Forms.Label();
@@ -54,7 +55,7 @@
             this.lblStatusFilter = new System.Windows.Forms.Label();
             this.cmbStatusFilter = new System.Windows.Forms.ComboBox();
             this.chkShowArchived = new System.Windows.Forms.CheckBox();
-            this.btnRefresh = new System.Windows.Forms.Button();
+            this.flowButtons = new System.Windows.Forms.FlowLayoutPanel();
             this.btnFileNew = new System.Windows.Forms.Button();
             this.lblStatus = new System.Windows.Forms.Label();
 
@@ -76,8 +77,10 @@
 
             this.pnlTop.SuspendLayout();
             this.tblFilters.SuspendLayout();
+            this.flowSearch.SuspendLayout();
             this.flowCategory.SuspendLayout();
             this.flowStatus.SuspendLayout();
+            this.flowButtons.SuspendLayout();
             this.pnlGridWrap.SuspendLayout();
             this.pnlPager.SuspendLayout();
             this.tblPager.SuspendLayout();
@@ -90,92 +93,120 @@
             // pnlTop
             // ============================================================
             this.pnlTop.Dock = System.Windows.Forms.DockStyle.Top;
-            this.pnlTop.Height = 108;
+            this.pnlTop.Height = 96;
             this.pnlTop.BackColor = System.Drawing.Color.White;
             this.pnlTop.Padding = new System.Windows.Forms.Padding(16, 14, 16, 8);
 
-            // tblFilters — two rows
+            // tblFilters — 4 columns × 2 rows
+            //   Row 0: Search | Category | Status | (right: File Complaint)
+            //   Row 1: Show archived
             this.tblFilters.Dock = System.Windows.Forms.DockStyle.Top;
             this.tblFilters.Height = 74;
-            this.tblFilters.ColumnCount = 5;
+            this.tblFilters.ColumnCount = 4;
             this.tblFilters.RowCount = 2;
             this.tblFilters.Padding = new System.Windows.Forms.Padding(0);
             this.tblFilters.Margin = new System.Windows.Forms.Padding(0);
 
-            // Row 1: Search | Category | Status
-            this.tblFilters.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.tblFilters.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 230F));
-            this.tblFilters.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 200F));
-            this.tblFilters.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 120F));
-            this.tblFilters.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 140F));
+            this.tblFilters.ColumnStyles.Add(
+                new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.AutoSize));
+            this.tblFilters.ColumnStyles.Add(
+                new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.AutoSize));
+            this.tblFilters.ColumnStyles.Add(
+                new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.AutoSize));
+            this.tblFilters.ColumnStyles.Add(
+                new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
 
-            this.tblFilters.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 36F));
-            this.tblFilters.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 38F));
+            this.tblFilters.RowStyles.Add(
+                new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 40F));
+            this.tblFilters.RowStyles.Add(
+                new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 30F));
 
-            // txtSearch
-            this.txtSearch.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.txtSearch.Margin = new System.Windows.Forms.Padding(0, 0, 12, 4);
-            this.txtSearch.PlaceholderText = "Search by code, subject, or customer...";
+            // ---- flowSearch: "Search:" + txtSearch ----
+            this.flowSearch.AutoSize = true;
+            this.flowSearch.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            this.flowSearch.FlowDirection = System.Windows.Forms.FlowDirection.LeftToRight;
+            this.flowSearch.WrapContents = false;
+            this.flowSearch.Anchor = System.Windows.Forms.AnchorStyles.Left;
+            this.flowSearch.Margin = new System.Windows.Forms.Padding(0, 0, 16, 0);
+            this.flowSearch.Padding = new System.Windows.Forms.Padding(0);
 
-            // flowCategory
-            this.flowCategory.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.txtSearch.Width = 420;
+            this.txtSearch.Margin = new System.Windows.Forms.Padding(0);
+
+            this.flowSearch.Controls.Add(this.txtSearch);
+
+            // ---- flowCategory ----
+            this.flowCategory.AutoSize = true;
+            this.flowCategory.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
             this.flowCategory.FlowDirection = System.Windows.Forms.FlowDirection.LeftToRight;
             this.flowCategory.WrapContents = false;
-            this.flowCategory.AutoSize = false;
-            this.flowCategory.Margin = new System.Windows.Forms.Padding(0, 0, 12, 4);
-            this.flowCategory.Padding = new System.Windows.Forms.Padding(0, 5, 0, 0);
+            this.flowCategory.Anchor = System.Windows.Forms.AnchorStyles.Left;
+            this.flowCategory.Margin = new System.Windows.Forms.Padding(0, 0, 16, 0);
+            this.flowCategory.Padding = new System.Windows.Forms.Padding(0);
 
             this.lblCategoryFilter.AutoSize = true;
-            this.lblCategoryFilter.Margin = new System.Windows.Forms.Padding(0, 0, 8, 0);
+            this.lblCategoryFilter.Margin = new System.Windows.Forms.Padding(0, 6, 8, 0);
             this.lblCategoryFilter.Text = "Category:";
+            this.lblCategoryFilter.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
 
             this.cmbCategoryFilter.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.cmbCategoryFilter.Width = 130;
+            this.cmbCategoryFilter.Width = 160;
+            this.cmbCategoryFilter.Margin = new System.Windows.Forms.Padding(0);
 
             this.flowCategory.Controls.Add(this.lblCategoryFilter);
             this.flowCategory.Controls.Add(this.cmbCategoryFilter);
 
-            // flowStatus
-            this.flowStatus.Dock = System.Windows.Forms.DockStyle.Fill;
+            // ---- flowStatus ----
+            this.flowStatus.AutoSize = true;
+            this.flowStatus.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
             this.flowStatus.FlowDirection = System.Windows.Forms.FlowDirection.LeftToRight;
             this.flowStatus.WrapContents = false;
-            this.flowStatus.AutoSize = false;
-            this.flowStatus.Margin = new System.Windows.Forms.Padding(0, 0, 12, 4);
-            this.flowStatus.Padding = new System.Windows.Forms.Padding(0, 5, 0, 0);
+            this.flowStatus.Anchor = System.Windows.Forms.AnchorStyles.Left;
+            this.flowStatus.Margin = new System.Windows.Forms.Padding(0, 0, 16, 0);
+            this.flowStatus.Padding = new System.Windows.Forms.Padding(0);
 
             this.lblStatusFilter.AutoSize = true;
-            this.lblStatusFilter.Margin = new System.Windows.Forms.Padding(0, 0, 8, 0);
+            this.lblStatusFilter.Margin = new System.Windows.Forms.Padding(0, 6, 8, 0);
             this.lblStatusFilter.Text = "Status:";
+            this.lblStatusFilter.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
 
             this.cmbStatusFilter.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.cmbStatusFilter.Width = 120;
+            this.cmbStatusFilter.Width = 150;
+            this.cmbStatusFilter.Margin = new System.Windows.Forms.Padding(0);
 
             this.flowStatus.Controls.Add(this.lblStatusFilter);
             this.flowStatus.Controls.Add(this.cmbStatusFilter);
 
-            // Row 1 buttons
-            this.btnRefresh.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.btnRefresh.Margin = new System.Windows.Forms.Padding(0, 0, 12, 4);
-            this.btnRefresh.Text = "Refresh";
+            // ---- flowButtons: File Complaint, right-aligned ----
+            this.flowButtons.AutoSize = true;
+            this.flowButtons.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            this.flowButtons.FlowDirection = System.Windows.Forms.FlowDirection.LeftToRight;
+            this.flowButtons.WrapContents = false;
+            this.flowButtons.Anchor = System.Windows.Forms.AnchorStyles.Right;
+            this.flowButtons.Margin = new System.Windows.Forms.Padding(0);
+            this.flowButtons.Padding = new System.Windows.Forms.Padding(0);
 
-            this.btnFileNew.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.btnFileNew.Margin = new System.Windows.Forms.Padding(0, 0, 0, 4);
+            this.btnFileNew.Width = 170;
+            this.btnFileNew.Height = 32;
+            this.btnFileNew.Margin = new System.Windows.Forms.Padding(0);
             this.btnFileNew.Text = "+ File Complaint";
 
-            // Row 2: chkShowArchived (spanning 2 columns)
-            this.chkShowArchived.AutoSize = true;
-            this.chkShowArchived.Text = "Show archived";
-            this.chkShowArchived.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.chkShowArchived.Margin = new System.Windows.Forms.Padding(0, 6, 0, 0);
+            this.flowButtons.Controls.Add(this.btnFileNew);
 
-            this.tblFilters.Controls.Add(this.txtSearch, 0, 0);
+            // ---- Row 1: chkShowArchived ----
+            this.chkShowArchived.AutoSize = true;
+            this.chkShowArchived.Margin = new System.Windows.Forms.Padding(0, 6, 0, 0);
+            this.chkShowArchived.Text = "Show archived";
+            this.chkShowArchived.UseVisualStyleBackColor = true;
+
+            // Add to grid
+            this.tblFilters.Controls.Add(this.flowSearch, 0, 0);
             this.tblFilters.Controls.Add(this.flowCategory, 1, 0);
             this.tblFilters.Controls.Add(this.flowStatus, 2, 0);
-            this.tblFilters.Controls.Add(this.btnRefresh, 3, 0);
-            this.tblFilters.Controls.Add(this.btnFileNew, 4, 0);
+            this.tblFilters.Controls.Add(this.flowButtons, 3, 0);
 
             this.tblFilters.Controls.Add(this.chkShowArchived, 0, 1);
-            this.tblFilters.SetColumnSpan(this.chkShowArchived, 2);
+            this.tblFilters.SetColumnSpan(this.chkShowArchived, 3);
 
             this.pnlTop.Controls.Add(this.tblFilters);
 
@@ -314,7 +345,7 @@
             // ============================================================
             // FrmComplaints
             // ============================================================
-            this.ClientSize = new System.Drawing.Size(1200, 720);
+            this.ClientSize = new System.Drawing.Size(1250, 720);
             this.MinimumSize = new System.Drawing.Size(1050, 600);
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "Complaints";
@@ -326,10 +357,15 @@
 
             this.pnlTop.ResumeLayout(false);
             this.tblFilters.ResumeLayout(false);
+            this.tblFilters.PerformLayout();
+            this.flowSearch.ResumeLayout(false);
+            this.flowSearch.PerformLayout();
             this.flowCategory.ResumeLayout(false);
             this.flowCategory.PerformLayout();
             this.flowStatus.ResumeLayout(false);
             this.flowStatus.PerformLayout();
+            this.flowButtons.ResumeLayout(false);
+            this.flowButtons.PerformLayout();
             this.pnlGridWrap.ResumeLayout(false);
             this.pnlPager.ResumeLayout(false);
             this.tblPager.ResumeLayout(false);

@@ -1,28 +1,19 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using CRM.api.Controllers;
+using CRM.domain.Controllers;
+using CRM.domain.Models;
+using CRM.infrastructure;
 
 namespace CRM.winForms.Forms;
 
 public partial class FrmCustomerRetention : Form
 {
+    private readonly IRetentionController _controller = new RetentionController();
+
     private const int AtRiskDays = 30;
     private const int DormantDays = 60;
 
     private List<RetentionRow> _allRows = new();
     private int _currentPage = 1;
-
-    private class RetentionRow
-    {
-        public int CustomerId { get; set; }
-        public string CustomerCode { get; set; } = "";
-        public string CustomerName { get; set; } = "";
-        public string ContactNumber { get; set; } = "";
-        public int CurrentPoints { get; set; }
-        public decimal PointsValue { get; set; }
-        public DateTime? LastOrderAt { get; set; }
-        public int? DaysSince { get; set; }
-        public int TotalOrders { get; set; }
-        public string Retention { get; set; } = "Active";
-    }
 
     public FrmCustomerRetention()
     {
@@ -40,8 +31,6 @@ public partial class FrmCustomerRetention : Form
             InitPager();
             LoadCustomers();
         };
-
-        btnRefresh.Click += (_, __) => LoadCustomers();
 
         txtSearch.TextChanged += (_, __) =>
         {
@@ -75,7 +64,7 @@ public partial class FrmCustomerRetention : Form
 
         AppTheme.StyleInput(txtSearch);
         AppTheme.StyleInput(cmbStatusFilter);
-        AppTheme.StyleSecondaryButton(btnRefresh);
+
         AppTheme.StyleLabel(lblStatus);
         AppTheme.StyleGrid(gridCustomers);
         AppTheme.StyleLabel(lblStatusFilter);
@@ -118,62 +107,14 @@ public partial class FrmCustomerRetention : Form
     {
         try
         {
-            using var db = AppServices.CreateTenantContext();
-            var search = txtSearch.Text.Trim().ToLower();
-            var statusFilter = cmbStatusFilter.SelectedItem?.ToString() ?? "All";
-            var now = DateTime.UtcNow;
-            var cutoffAtRisk = now.AddDays(-AtRiskDays);
-            var cutoffDormant = now.AddDays(-DormantDays);
-
-            var raw = db.Customers
-                .AsNoTracking()
-                .Where(c => c.IsActive)
-                .Where(c => string.IsNullOrWhiteSpace(search) ||
-                            c.CustomerCode.ToLower().Contains(search) ||
-                            c.CustomerName.ToLower().Contains(search))
-                .Select(c => new
-                {
-                    c.CustomerId,
-                    c.CustomerCode,
-                    c.CustomerName,
-                    c.ContactNumber,
-                    c.CurrentPoints,
-                    LastOrderAt = c.Orders
-                        .Where(o => o.Status != "Cancelled")
-                        .Max(o => (DateTime?)o.OrderDate),
-                    TotalOrders = c.Orders.Count(o => o.Status != "Cancelled")
-                })
-                .ToList();
-
-            _allRows = raw.Select(x =>
+            var filter = new RetentionFilter
             {
-                int? days = x.LastOrderAt.HasValue
-                    ? (int)(now - x.LastOrderAt.Value).TotalDays
-                    : (int?)null;
+                Search = txtSearch.Text.Trim().ToLower(),
+                Status = cmbStatusFilter.SelectedItem?.ToString() ?? "All",
+                Now = DateTime.UtcNow
+            };
 
-                string status;
-                if (x.LastOrderAt == null) status = "Never";
-                else if (x.LastOrderAt < cutoffDormant) status = "Dormant";
-                else if (x.LastOrderAt < cutoffAtRisk) status = "At Risk";
-                else status = "Active";
-
-                return new RetentionRow
-                {
-                    CustomerId = x.CustomerId,
-                    CustomerCode = x.CustomerCode,
-                    CustomerName = x.CustomerName,
-                    ContactNumber = x.ContactNumber ?? "-",
-                    CurrentPoints = x.CurrentPoints,
-                    PointsValue = x.CurrentPoints / 100m,
-                    LastOrderAt = x.LastOrderAt,
-                    DaysSince = days,
-                    TotalOrders = x.TotalOrders,
-                    Retention = status
-                };
-            }).ToList();
-
-            if (statusFilter != "All")
-                _allRows = _allRows.Where(r => r.Retention == statusFilter).ToList();
+            _allRows = _controller.GetRetention(filter);
 
             if (_currentPage > TotalPages) _currentPage = Math.Max(1, TotalPages);
 
@@ -285,21 +226,21 @@ public partial class FrmCustomerRetention : Form
             if (col.Name == "colHistory" ||
                 col.Name == "colAdjust" ||
                 col.Name == "colContact" ||
-                col.Name == "colFollowUp" ||      // legacy cleanup
-                col.Name == "colSendOffer")       // legacy cleanup
+                col.Name == "colFollowUp" ||
+                col.Name == "colSendOffer")
             {
                 gridCustomers.Columns.RemoveAt(i);
             }
         }
 
         gridCustomers.Columns.Add(AppTheme.CreateGridButtonColumn(
-            "colHistory", "History", "View History", "primary", 130));
+            "colHistory", "History", "View History", "primary", 110));
 
         gridCustomers.Columns.Add(AppTheme.CreateGridButtonColumn(
-            "colAdjust", "Adjust", "Adjust Points", "warning", 130));
+            "colAdjust", "Adjust", "Adjust Points", "warning", 110));
 
         gridCustomers.Columns.Add(AppTheme.CreateGridButtonColumn(
-            "colContact", "Contact", "Contact Customer", "success", 180));
+            "colContact", "Contact", "Contact Customer", "success", 110));
 
         AppTheme.ApplyStyleToButtonColumn(gridCustomers, "colHistory", "primary");
         AppTheme.ApplyStyleToButtonColumn(gridCustomers, "colAdjust", "warning");
@@ -310,18 +251,24 @@ public partial class FrmCustomerRetention : Form
     }
 
     // ============================================================
-    //  COLUMN LAYOUT — edge-to-edge grid, no clipped buttons
+    //  COLUMN LAYOUT
     // ============================================================
 
     private void StyleColumns()
     {
         var grid = gridCustomers;
 
-        // Hide the raw ID
+        // Wrap long cell content so the two-word action captions
+        // ("View History", "Adjust Points", "Contact Customer") render
+        // on two lines. Use a FIXED row height instead of
+        // AutoSizeRowsMode = AllCells — auto-measure on every paint is
+        // the single biggest cause of grid lag on this form.
+        grid.DefaultCellStyle.WrapMode = DataGridViewTriState.True;
+        grid.RowTemplate.Height = 48;
+
         if (grid.Columns.Contains("CustomerId"))
             grid.Columns["CustomerId"].Visible = false;
 
-        // ---- Code ----
         if (grid.Columns.Contains("CustomerCode"))
         {
             var c = grid.Columns["CustomerCode"];
@@ -332,7 +279,6 @@ public partial class FrmCustomerRetention : Form
             c.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleLeft;
         }
 
-        // ---- Customer name (Fill — absorbs leftover space, not greedy) ----
         if (grid.Columns.Contains("CustomerName"))
         {
             var c = grid.Columns["CustomerName"];
@@ -343,7 +289,6 @@ public partial class FrmCustomerRetention : Form
             c.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleLeft;
         }
 
-        // ---- Contact number ----
         if (grid.Columns.Contains("ContactNumber"))
         {
             var c = grid.Columns["ContactNumber"];
@@ -354,7 +299,6 @@ public partial class FrmCustomerRetention : Form
             c.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleLeft;
         }
 
-        // ---- Points ----
         if (grid.Columns.Contains("CurrentPoints"))
         {
             var c = grid.Columns["CurrentPoints"];
@@ -366,7 +310,6 @@ public partial class FrmCustomerRetention : Form
             c.DefaultCellStyle.Format = "N0";
         }
 
-        // ---- Peso value ----
         if (grid.Columns.Contains("PointsValue"))
         {
             var c = grid.Columns["PointsValue"];
@@ -378,7 +321,6 @@ public partial class FrmCustomerRetention : Form
             c.DefaultCellStyle.Format = "N2";
         }
 
-        // ---- Last order date ----
         if (grid.Columns.Contains("LastOrderAt"))
         {
             var c = grid.Columns["LastOrderAt"];
@@ -390,7 +332,6 @@ public partial class FrmCustomerRetention : Form
             c.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
         }
 
-        // ---- Days since ----
         if (grid.Columns.Contains("DaysSince"))
         {
             var c = grid.Columns["DaysSince"];
@@ -401,7 +342,6 @@ public partial class FrmCustomerRetention : Form
             c.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
         }
 
-        // ---- Total orders ----
         if (grid.Columns.Contains("TotalOrders"))
         {
             var c = grid.Columns["TotalOrders"];
@@ -412,7 +352,6 @@ public partial class FrmCustomerRetention : Form
             c.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
         }
 
-        // ---- Retention status ----
         if (grid.Columns.Contains("Retention"))
         {
             var c = grid.Columns["Retention"];
@@ -424,19 +363,14 @@ public partial class FrmCustomerRetention : Form
             c.DefaultCellStyle.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
         }
 
-        // ---- Action columns: fixed widths, tight padding, clear font ----
-        ApplyActionColumnLayout(grid, "colHistory", 130);
-        ApplyActionColumnLayout(grid, "colAdjust", 130);
-        ApplyActionColumnLayout(grid, "colContact", 180);
+        ApplyActionColumnLayout(grid, "colHistory", 110);
+        ApplyActionColumnLayout(grid, "colAdjust", 110);
+        ApplyActionColumnLayout(grid, "colContact", 110);
 
         grid.CellFormatting -= Grid_CellFormatting;
         grid.CellFormatting += Grid_CellFormatting;
     }
 
-    /// <summary>
-    /// Ensures an action column is wide enough, has no excess internal padding,
-    /// and uses a font that renders its caption clearly.
-    /// </summary>
     private static void ApplyActionColumnLayout(DataGridView grid, string columnName, int width)
     {
         if (!grid.Columns.Contains(columnName)) return;
@@ -447,20 +381,13 @@ public partial class FrmCustomerRetention : Form
         c.Width = width;
         c.MinimumWidth = width;
 
-        // Kill the default cell padding that squeezes the text
         c.DefaultCellStyle.Padding = new Padding(0);
-
-        // Center the text horizontally and vertically
         c.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
-
-        // Use a slightly larger, medium-weight font for readability
         c.DefaultCellStyle.Font = new Font("Segoe UI", 9.5F, FontStyle.Regular);
 
-        // Keep the button text white on colored background
         c.DefaultCellStyle.ForeColor = AppTheme.TextOnDark;
         c.DefaultCellStyle.SelectionForeColor = AppTheme.TextOnDark;
 
-        // Header font — bold for clarity
         c.HeaderCell.Style.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
         c.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
     }

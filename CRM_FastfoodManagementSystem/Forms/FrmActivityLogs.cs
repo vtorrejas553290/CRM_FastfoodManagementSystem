@@ -1,27 +1,18 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using CRM.api.Controllers;
+using CRM.domain.Controllers;
+using CRM.domain.Models;
+using CRM.infrastructure;
 
 namespace CRM.winForms.Forms;
 
 public partial class FrmActivityLogs : Form
 {
-    // ---- Pagination state ----
-    private List<LogRow> _allRows = new();
+    private readonly IActivityLogController _controller = new ActivityLogController();
+
+    private List<ActivityLogRow> _allRows = new();
     private int _currentPage = 1;
 
-    /// <summary>
-    /// Concrete row type — anonymous types can't be stored in a field.
-    /// </summary>
-    private class LogRow
-    {
-        public int ActivityLogId { get; set; }
-        public DateTime PerformedAt { get; set; }
-        public string Username { get; set; } = "";
-        public string RoleCode { get; set; } = "";
-        public string ActionType { get; set; } = "";
-        public string EntityName { get; set; } = "";
-        public int? EntityId { get; set; }
-        public string Description { get; set; } = "";
-    }
+    private bool _syncingDates = false;
 
     public FrmActivityLogs()
     {
@@ -35,7 +26,7 @@ public partial class FrmActivityLogs : Form
             LoadLogs();
         };
 
-        btnRefresh.Click += (_, __) => LoadLogs();
+        
 
         txtSearch.TextChanged += (_, __) =>
         {
@@ -51,11 +42,42 @@ public partial class FrmActivityLogs : Form
 
         cmbDateFilter.SelectedIndexChanged += (_, __) =>
         {
+            if (_syncingDates) return;
+
+            _syncingDates = true;
+            SyncDatePickersFromRange();
+            _syncingDates = false;
+
             _currentPage = 1;
             LoadLogs();
         };
 
-        // Pagination events
+        dtpFromDate.ValueChanged += (_, __) =>
+        {
+            if (_syncingDates) return;
+
+            _syncingDates = true;
+            if (cmbDateFilter.SelectedItem?.ToString() != "Custom")
+                cmbDateFilter.SelectedItem = "Custom";
+            _syncingDates = false;
+
+            _currentPage = 1;
+            LoadLogs();
+        };
+
+        dtpToDate.ValueChanged += (_, __) =>
+        {
+            if (_syncingDates) return;
+
+            _syncingDates = true;
+            if (cmbDateFilter.SelectedItem?.ToString() != "Custom")
+                cmbDateFilter.SelectedItem = "Custom";
+            _syncingDates = false;
+
+            _currentPage = 1;
+            LoadLogs();
+        };
+
         cmbPageSize.SelectedIndexChanged += (_, __) =>
         {
             _currentPage = 1;
@@ -77,16 +99,17 @@ public partial class FrmActivityLogs : Form
         AppTheme.StyleInput(txtSearch);
         AppTheme.StyleInput(cmbActionFilter);
         AppTheme.StyleInput(cmbDateFilter);
-        AppTheme.StyleSecondaryButton(btnRefresh);
+       
         AppTheme.StyleGrid(gridLogs);
 
         AppTheme.StyleLabel(lblActionFilter);
         AppTheme.StyleLabel(lblDateFilter);
+        AppTheme.StyleLabel(lblFromDate);
+        AppTheme.StyleLabel(lblToDate);
 
         lblTotal.Font = AppTheme.FontSubheading;
         lblTotal.ForeColor = AppTheme.Primary20;
 
-        // Pager styling
         AppTheme.StyleLabel(lblPageSize);
         AppTheme.StyleLabel(lblPageInfo);
         AppTheme.StyleLabel(lblShowing);
@@ -102,80 +125,85 @@ public partial class FrmActivityLogs : Form
         cmbActionFilter.Items.Clear();
         cmbActionFilter.Items.AddRange(new object[]
         {
-            "All",
-            "Login",
-            "Logout",
-            "Create",
-            "Update",
-            "Archive",
-            "Restock",
-            "Order",
-            "Payment"
+            "All", "Login", "Logout", "Create", "Update",
+            "Archive", "Restock", "Order", "Payment"
         });
         cmbActionFilter.SelectedIndex = 0;
 
         cmbDateFilter.Items.Clear();
-        cmbDateFilter.Items.AddRange(new object[] { "All", "Today", "Last 7 Days", "Last 30 Days" });
-        cmbDateFilter.SelectedIndex = 0;
+        cmbDateFilter.Items.AddRange(new object[]
+        {
+            "All", "Today", "Last 7 Days", "Last 30 Days", "Custom"
+        });
+
+        _syncingDates = true;
+        cmbDateFilter.SelectedIndex = 0;   // "All"
+        SyncDatePickersFromRange();
+        _syncingDates = false;
+    }
+
+    private void SyncDatePickersFromRange()
+    {
+        var now = DateTime.UtcNow;
+        var sel = cmbDateFilter.SelectedItem?.ToString() ?? "All";
+
+        switch (sel)
+        {
+            case "Today":
+                dtpFromDate.Value = now.Date;
+                dtpToDate.Value = now.Date;
+                break;
+            case "Last 7 Days":
+                dtpFromDate.Value = now.AddDays(-7).Date;
+                dtpToDate.Value = now.Date;
+                break;
+            case "Last 30 Days":
+                dtpFromDate.Value = now.AddDays(-30).Date;
+                dtpToDate.Value = now.Date;
+                break;
+            case "All":
+            case "Custom":
+                // leave current picker values alone
+                break;
+        }
+    }
+
+    private (DateTime? from, DateTime? to) GetFromTo()
+    {
+        var sel = cmbDateFilter.SelectedItem?.ToString() ?? "All";
+
+        if (sel == "All")
+            return (null, null);
+
+        DateTime from = dtpFromDate.Value.Date;
+        DateTime to = dtpToDate.Value.Date.AddDays(1).AddTicks(-1);
+        return (from, to);
     }
 
     private void InitPager()
     {
         cmbPageSize.Items.Clear();
         cmbPageSize.Items.AddRange(new object[] { "10", "25", "50", "100", "All" });
-        cmbPageSize.SelectedIndex = 1;   // default 25
+        cmbPageSize.SelectedIndex = 1;
     }
-
-    // ============================================================
-    //  DATA LOAD
-    // ============================================================
 
     private void LoadLogs()
     {
         try
         {
-            using var db = AppServices.CreateTenantContext();
+            var (from, to) = GetFromTo();
 
-            var search = txtSearch.Text.Trim().ToLower();
-            var action = cmbActionFilter.SelectedItem?.ToString() ?? "All";
-            var dateRange = cmbDateFilter.SelectedItem?.ToString() ?? "All";
+            var filter = new ActivityLogFilter
+            {
+                Search = txtSearch.Text.Trim().ToLower(),
+                Action = cmbActionFilter.SelectedItem?.ToString() ?? "All",
+                DateRange = cmbDateFilter.SelectedItem?.ToString() ?? "All",
+                FromDate = from,
+                ToDate = to
+            };
 
-            var query = db.ActivityLogs.AsNoTracking().AsQueryable();
+            _allRows = _controller.GetActivityLogs(filter);
 
-            if (action != "All")
-                query = query.Where(x => x.ActionType == action);
-
-            var now = DateTime.UtcNow;
-
-            if (dateRange == "Today")
-                query = query.Where(x => x.PerformedAt.Date == now.Date);
-            else if (dateRange == "Last 7 Days")
-                query = query.Where(x => x.PerformedAt >= now.AddDays(-7));
-            else if (dateRange == "Last 30 Days")
-                query = query.Where(x => x.PerformedAt >= now.AddDays(-30));
-
-            _allRows = query
-                .Where(x =>
-                    string.IsNullOrWhiteSpace(search) ||
-                    (x.Username != null && x.Username.ToLower().Contains(search)) ||
-                    x.EntityName.ToLower().Contains(search) ||
-                    (x.Description != null && x.Description.ToLower().Contains(search)))
-                .OrderByDescending(x => x.PerformedAt)
-                .Take(1000)   // cap at 1000 rows for performance
-                .Select(x => new LogRow
-                {
-                    ActivityLogId = x.ActivityLogId,
-                    PerformedAt = x.PerformedAt,
-                    Username = x.Username ?? "",
-                    RoleCode = x.RoleCode ?? "",
-                    ActionType = x.ActionType ?? "",
-                    EntityName = x.EntityName ?? "",
-                    EntityId = x.EntityId,
-                    Description = x.Description ?? ""
-                })
-                .ToList();
-
-            // Clamp page if filters shrank the set
             if (_currentPage > TotalPages) _currentPage = Math.Max(1, TotalPages);
 
             RenderPage();
@@ -187,10 +215,6 @@ public partial class FrmActivityLogs : Form
             MessageBox.Show(ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
-
-    // ============================================================
-    //  PAGINATION
-    // ============================================================
 
     private int PageSize
     {
@@ -223,7 +247,7 @@ public partial class FrmActivityLogs : Form
     private void RenderPage()
     {
         int size = PageSize;
-        List<LogRow> pageRows;
+        List<ActivityLogRow> pageRows;
 
         if (size == int.MaxValue)
             pageRows = _allRows;
@@ -262,44 +286,47 @@ public partial class FrmActivityLogs : Form
         btnLastPage.Enabled = multiPage && _currentPage < total;
     }
 
-    // ============================================================
-    //  COLUMN STYLING
-    // ============================================================
-
     private void StyleColumns()
     {
-        if (gridLogs.Columns.Contains("ActivityLogId"))
-            gridLogs.Columns["ActivityLogId"].Visible = false;
+        var grid = gridLogs;
 
-        if (gridLogs.Columns.Contains("PerformedAt"))
-        {
-            gridLogs.Columns["PerformedAt"].HeaderText = "When";
-            gridLogs.Columns["PerformedAt"].DefaultCellStyle.Format = "yyyy-MM-dd HH:mm:ss";
-            gridLogs.Columns["PerformedAt"].DefaultCellStyle.Alignment =
-                DataGridViewContentAlignment.MiddleCenter;
-            gridLogs.Columns["PerformedAt"].Width = 160;
-            gridLogs.Columns["PerformedAt"].AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
-        }
+        if (grid.Columns.Contains("ActivityLogId")) grid.Columns["ActivityLogId"].Visible = false;
 
-        if (gridLogs.Columns.Contains("Username"))
-            gridLogs.Columns["Username"].HeaderText = "User";
+        SetColumnFixed("PerformedAt", "When", 160, DataGridViewContentAlignment.MiddleCenter);
+        SetColumnFixed("Username", "User", 130, DataGridViewContentAlignment.MiddleLeft);
+        SetColumnFixed("RoleCode", "Role", 100, DataGridViewContentAlignment.MiddleLeft);
+        SetColumnFixed("ActionType", "Action", 110, DataGridViewContentAlignment.MiddleCenter);
+        SetColumnFixed("EntityName", "Entity", 140, DataGridViewContentAlignment.MiddleLeft);
+        SetColumnFixed("EntityId", "ID", 70, DataGridViewContentAlignment.MiddleCenter);
 
-        if (gridLogs.Columns.Contains("RoleCode"))
-            gridLogs.Columns["RoleCode"].HeaderText = "Role";
+        SetColumnFill("Description", "Description", 100, 200, DataGridViewContentAlignment.MiddleLeft);
 
-        if (gridLogs.Columns.Contains("ActionType"))
-            gridLogs.Columns["ActionType"].HeaderText = "Action";
+        if (grid.Columns.Contains("PerformedAt"))
+            grid.Columns["PerformedAt"].DefaultCellStyle.Format = "yyyy-MM-dd HH:mm:ss";
 
-        if (gridLogs.Columns.Contains("EntityName"))
-            gridLogs.Columns["EntityName"].HeaderText = "Entity";
+        grid.DefaultCellStyle.WrapMode = DataGridViewTriState.True;
+        grid.RowTemplate.Height = 32;
+    }
 
-        if (gridLogs.Columns.Contains("EntityId"))
-            gridLogs.Columns["EntityId"].HeaderText = "ID";
+    private void SetColumnFixed(string name, string header, int width, DataGridViewContentAlignment align)
+    {
+        if (!gridLogs.Columns.Contains(name)) return;
+        var c = gridLogs.Columns[name];
+        c.HeaderText = header;
+        c.AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
+        c.Width = width;
+        c.MinimumWidth = width;
+        c.DefaultCellStyle.Alignment = align;
+    }
 
-        if (gridLogs.Columns.Contains("Description"))
-        {
-            gridLogs.Columns["Description"].HeaderText = "Description";
-            gridLogs.Columns["Description"].AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
-        }
+    private void SetColumnFill(string name, string header, int fillWeight, int minWidth, DataGridViewContentAlignment align)
+    {
+        if (!gridLogs.Columns.Contains(name)) return;
+        var c = gridLogs.Columns[name];
+        c.HeaderText = header;
+        c.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
+        c.FillWeight = fillWeight;
+        c.MinimumWidth = minWidth;
+        c.DefaultCellStyle.Alignment = align;
     }
 }

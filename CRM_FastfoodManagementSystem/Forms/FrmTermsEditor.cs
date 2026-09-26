@@ -1,6 +1,7 @@
 ﻿using CRM.domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using System.Reflection.PortableExecutable;
+using CRM.infrastructure;
 
 namespace CRM.winForms.Forms;
 

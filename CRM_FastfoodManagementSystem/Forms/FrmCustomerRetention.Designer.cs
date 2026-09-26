@@ -5,18 +5,16 @@
         private System.ComponentModel.IContainer components = null;
 
         private System.Windows.Forms.Panel pnlTop;
-        private System.Windows.Forms.Panel pnlGridWrap;
+        private System.Windows.Forms.TableLayoutPanel tblHeader;
+        private System.Windows.Forms.FlowLayoutPanel flowSearch;
         private System.Windows.Forms.TextBox txtSearch;
-        private System.Windows.Forms.Label lblPointsInfo;
-        private System.Windows.Forms.Button btnRefresh;
-        private System.Windows.Forms.Label lblStatus;
-        private System.Windows.Forms.DataGridView gridCustomers;
-
-        // Top layout
-        private System.Windows.Forms.TableLayoutPanel tblFilters;
         private System.Windows.Forms.FlowLayoutPanel flowStatus;
         private System.Windows.Forms.Label lblStatusFilter;
         private System.Windows.Forms.ComboBox cmbStatusFilter;
+        private System.Windows.Forms.Label lblPointsInfo;
+        private System.Windows.Forms.Label lblStatus;
+        private System.Windows.Forms.DataGridView gridCustomers;
+        private System.Windows.Forms.Panel pnlGridWrap;
 
         // Pagination bar
         private System.Windows.Forms.Panel pnlPager;
@@ -42,17 +40,16 @@
         private void InitializeComponent()
         {
             this.pnlTop = new System.Windows.Forms.Panel();
-            this.pnlGridWrap = new System.Windows.Forms.Panel();
+            this.tblHeader = new System.Windows.Forms.TableLayoutPanel();
+            this.flowSearch = new System.Windows.Forms.FlowLayoutPanel();
             this.txtSearch = new System.Windows.Forms.TextBox();
-            this.lblPointsInfo = new System.Windows.Forms.Label();
-            this.btnRefresh = new System.Windows.Forms.Button();
-            this.lblStatus = new System.Windows.Forms.Label();
-            this.gridCustomers = new System.Windows.Forms.DataGridView();
-
-            this.tblFilters = new System.Windows.Forms.TableLayoutPanel();
             this.flowStatus = new System.Windows.Forms.FlowLayoutPanel();
             this.lblStatusFilter = new System.Windows.Forms.Label();
             this.cmbStatusFilter = new System.Windows.Forms.ComboBox();
+            this.lblPointsInfo = new System.Windows.Forms.Label();
+            this.lblStatus = new System.Windows.Forms.Label();
+            this.gridCustomers = new System.Windows.Forms.DataGridView();
+            this.pnlGridWrap = new System.Windows.Forms.Panel();
 
             this.pnlPager = new System.Windows.Forms.Panel();
             this.tblPager = new System.Windows.Forms.TableLayoutPanel();
@@ -68,9 +65,10 @@
             this.lblShowing = new System.Windows.Forms.Label();
 
             this.pnlTop.SuspendLayout();
-            this.pnlGridWrap.SuspendLayout();
-            this.tblFilters.SuspendLayout();
+            this.tblHeader.SuspendLayout();
+            this.flowSearch.SuspendLayout();
             this.flowStatus.SuspendLayout();
+            this.pnlGridWrap.SuspendLayout();
             this.pnlPager.SuspendLayout();
             this.tblPager.SuspendLayout();
             this.flowPageSize.SuspendLayout();
@@ -79,75 +77,84 @@
             this.SuspendLayout();
 
             // ============================================================
-            // pnlTop — header with filter row + info line
+            // pnlTop
             // ============================================================
             this.pnlTop.Dock = System.Windows.Forms.DockStyle.Top;
-            this.pnlTop.Height = 100;
+            this.pnlTop.Height = 108;
             this.pnlTop.BackColor = System.Drawing.Color.White;
             this.pnlTop.Padding = new System.Windows.Forms.Padding(16, 14, 16, 8);
 
-            // tblFilters: search | status filter | refresh
-            this.tblFilters.Dock = System.Windows.Forms.DockStyle.Top;
-            this.tblFilters.Height = 40;
-            this.tblFilters.ColumnCount = 3;
-            this.tblFilters.RowCount = 1;
-            this.tblFilters.Padding = new System.Windows.Forms.Padding(0);
-            this.tblFilters.Margin = new System.Windows.Forms.Padding(0);
+            // tblHeader — 2 columns × 2 rows
+            //   Row 0: Search | Status
+            //   Row 1: Loyalty caption
+            this.tblHeader.Dock = System.Windows.Forms.DockStyle.Top;
+            this.tblHeader.Height = 74;
+            this.tblHeader.ColumnCount = 2;
+            this.tblHeader.RowCount = 2;
+            this.tblHeader.Padding = new System.Windows.Forms.Padding(0);
+            this.tblHeader.Margin = new System.Windows.Forms.Padding(0);
 
-            this.tblFilters.ColumnStyles.Add(
+            this.tblHeader.ColumnStyles.Add(
+                new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.AutoSize));
+            this.tblHeader.ColumnStyles.Add(
                 new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
-            this.tblFilters.ColumnStyles.Add(
-                new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 240F));
-            this.tblFilters.ColumnStyles.Add(
-                new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 120F));
 
-            this.tblFilters.RowStyles.Add(
+            this.tblHeader.RowStyles.Add(
                 new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 40F));
+            this.tblHeader.RowStyles.Add(
+                new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 30F));
 
-            // txtSearch
-            this.txtSearch.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.txtSearch.Margin = new System.Windows.Forms.Padding(0, 0, 12, 0);
+            // ---- Row 0, col 0: flowSearch ----
+            this.flowSearch.AutoSize = true;
+            this.flowSearch.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            this.flowSearch.FlowDirection = System.Windows.Forms.FlowDirection.LeftToRight;
+            this.flowSearch.WrapContents = false;
+            this.flowSearch.Anchor = System.Windows.Forms.AnchorStyles.Left;
+            this.flowSearch.Margin = new System.Windows.Forms.Padding(0, 0, 16, 0);
+            this.flowSearch.Padding = new System.Windows.Forms.Padding(0);
+
+            this.txtSearch.Width = 420;
+            this.txtSearch.Margin = new System.Windows.Forms.Padding(0);
             this.txtSearch.PlaceholderText = "Search by customer code or name...";
 
-            // flowStatus: "Status:" + combo
-            this.flowStatus.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.flowSearch.Controls.Add(this.txtSearch);
+
+            // ---- Row 0, col 1: flowStatus ----
+            this.flowStatus.AutoSize = true;
+            this.flowStatus.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
             this.flowStatus.FlowDirection = System.Windows.Forms.FlowDirection.LeftToRight;
             this.flowStatus.WrapContents = false;
-            this.flowStatus.AutoSize = false;
-            this.flowStatus.Margin = new System.Windows.Forms.Padding(0, 0, 12, 0);
-            this.flowStatus.Padding = new System.Windows.Forms.Padding(0, 7, 0, 0);
+            this.flowStatus.Anchor = System.Windows.Forms.AnchorStyles.Left;
+            this.flowStatus.Margin = new System.Windows.Forms.Padding(0);
+            this.flowStatus.Padding = new System.Windows.Forms.Padding(0);
 
             this.lblStatusFilter.AutoSize = true;
-            this.lblStatusFilter.Margin = new System.Windows.Forms.Padding(0, 0, 8, 0);
+            this.lblStatusFilter.Margin = new System.Windows.Forms.Padding(0, 6, 8, 0);
             this.lblStatusFilter.Text = "Status:";
             this.lblStatusFilter.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
 
             this.cmbStatusFilter.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.cmbStatusFilter.Width = 150;
+            this.cmbStatusFilter.Margin = new System.Windows.Forms.Padding(0);
 
             this.flowStatus.Controls.Add(this.lblStatusFilter);
             this.flowStatus.Controls.Add(this.cmbStatusFilter);
 
-            // btnRefresh
-            this.btnRefresh.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.btnRefresh.Margin = new System.Windows.Forms.Padding(0);
-            this.btnRefresh.Text = "Refresh";
-
-            this.tblFilters.Controls.Add(this.txtSearch, 0, 0);
-            this.tblFilters.Controls.Add(this.flowStatus, 1, 0);
-            this.tblFilters.Controls.Add(this.btnRefresh, 2, 0);
-
-            // lblPointsInfo (below the filter row)
+            // ---- Row 1, col 0–1 (span): lblPointsInfo ----
             this.lblPointsInfo.AutoSize = false;
-            this.lblPointsInfo.Dock = System.Windows.Forms.DockStyle.Bottom;
-            this.lblPointsInfo.Height = 28;
+            this.lblPointsInfo.Height = 24;
+            this.lblPointsInfo.Dock = System.Windows.Forms.DockStyle.Fill;
             this.lblPointsInfo.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Italic);
             this.lblPointsInfo.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
-            this.lblPointsInfo.Padding = new System.Windows.Forms.Padding(2, 0, 0, 0);
+            this.lblPointsInfo.Padding = new System.Windows.Forms.Padding(2, 4, 0, 0);
             this.lblPointsInfo.Text = "Loyalty: ₱1 spent = 1 point earned. 100 points = ₱1 discount.";
 
-            this.pnlTop.Controls.Add(this.lblPointsInfo);
-            this.pnlTop.Controls.Add(this.tblFilters);
+            this.tblHeader.Controls.Add(this.flowSearch, 0, 0);
+            this.tblHeader.Controls.Add(this.flowStatus, 1, 0);
+            this.tblHeader.Controls.Add(this.lblPointsInfo, 0, 1);
+            this.tblHeader.SetColumnSpan(this.lblPointsInfo, 2);
+
+            this.pnlTop.Controls.Add(this.tblHeader);
 
             // ============================================================
             // pnlGridWrap
@@ -172,7 +179,7 @@
             this.pnlGridWrap.Controls.Add(this.gridCustomers);
 
             // ============================================================
-            // pnlPager — pagination bar
+            // pnlPager
             // ============================================================
             this.pnlPager.Dock = System.Windows.Forms.DockStyle.Bottom;
             this.pnlPager.Height = 52;
@@ -195,7 +202,6 @@
             this.tblPager.RowStyles.Add(
                 new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
 
-            // flowPageSize
             this.flowPageSize.AutoSize = true;
             this.flowPageSize.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
             this.flowPageSize.FlowDirection = System.Windows.Forms.FlowDirection.LeftToRight;
@@ -216,7 +222,6 @@
             this.flowPageSize.Controls.Add(this.lblPageSize);
             this.flowPageSize.Controls.Add(this.cmbPageSize);
 
-            // tblNav
             this.tblNav.AutoSize = true;
             this.tblNav.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
             this.tblNav.ColumnCount = 5;
@@ -239,35 +244,30 @@
             this.tblNav.RowStyles.Add(
                 new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 34F));
 
-            // btnFirstPage
             this.btnFirstPage.Dock = System.Windows.Forms.DockStyle.Fill;
             this.btnFirstPage.Margin = new System.Windows.Forms.Padding(0, 0, 4, 0);
             this.btnFirstPage.Font = new System.Drawing.Font("Segoe UI", 11F, System.Drawing.FontStyle.Bold);
             this.btnFirstPage.Text = "«";
             this.btnFirstPage.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
 
-            // btnPrevPage
             this.btnPrevPage.Dock = System.Windows.Forms.DockStyle.Fill;
             this.btnPrevPage.Margin = new System.Windows.Forms.Padding(0, 0, 4, 0);
             this.btnPrevPage.Font = new System.Drawing.Font("Segoe UI", 11F, System.Drawing.FontStyle.Bold);
             this.btnPrevPage.Text = "‹";
             this.btnPrevPage.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
 
-            // lblPageInfo
             this.lblPageInfo.Dock = System.Windows.Forms.DockStyle.Fill;
             this.lblPageInfo.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.lblPageInfo.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Bold);
             this.lblPageInfo.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
             this.lblPageInfo.Text = "Page 1 of 1";
 
-            // btnNextPage
             this.btnNextPage.Dock = System.Windows.Forms.DockStyle.Fill;
             this.btnNextPage.Margin = new System.Windows.Forms.Padding(0, 0, 4, 0);
             this.btnNextPage.Font = new System.Drawing.Font("Segoe UI", 11F, System.Drawing.FontStyle.Bold);
             this.btnNextPage.Text = "›";
             this.btnNextPage.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
 
-            // btnLastPage
             this.btnLastPage.Dock = System.Windows.Forms.DockStyle.Fill;
             this.btnLastPage.Margin = new System.Windows.Forms.Padding(0);
             this.btnLastPage.Font = new System.Drawing.Font("Segoe UI", 11F, System.Drawing.FontStyle.Bold);
@@ -280,7 +280,6 @@
             this.tblNav.Controls.Add(this.btnNextPage, 3, 0);
             this.tblNav.Controls.Add(this.btnLastPage, 4, 0);
 
-            // lblShowing
             this.lblShowing.AutoSize = true;
             this.lblShowing.Anchor = System.Windows.Forms.AnchorStyles.Right;
             this.lblShowing.Margin = new System.Windows.Forms.Padding(0);
@@ -315,7 +314,11 @@
             this.Controls.Add(this.pnlTop);
 
             this.pnlTop.ResumeLayout(false);
-            this.tblFilters.ResumeLayout(false);
+            this.pnlTop.PerformLayout();
+            this.tblHeader.ResumeLayout(false);
+            this.tblHeader.PerformLayout();
+            this.flowSearch.ResumeLayout(false);
+            this.flowSearch.PerformLayout();
             this.flowStatus.ResumeLayout(false);
             this.flowStatus.PerformLayout();
             this.pnlGridWrap.ResumeLayout(false);

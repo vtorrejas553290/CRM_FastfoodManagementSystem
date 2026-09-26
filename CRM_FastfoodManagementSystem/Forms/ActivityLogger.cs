@@ -1,4 +1,5 @@
 ﻿using CRM.domain.Entities;
+using CRM.infrastructure;
 
 namespace CRM.winForms;
 

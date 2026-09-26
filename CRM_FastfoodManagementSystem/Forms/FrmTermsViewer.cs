@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using System.Drawing.Printing;
 using System.Text;
+using CRM.infrastructure;
 
 namespace CRM.winForms.Forms;
 

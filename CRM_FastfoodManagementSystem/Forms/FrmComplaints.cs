@@ -1,10 +1,14 @@
-﻿using CRM.domain.Entities;
-using Microsoft.EntityFrameworkCore;
+﻿using CRM.api.Controllers;
+using CRM.domain.Controllers;
+using CRM.domain.Models;
+using CRM.infrastructure;
 
 namespace CRM.winForms.Forms;
 
 public partial class FrmComplaints : Form
 {
+    private readonly IComplaintController _controller = new ComplaintController();
+
     private static readonly string[] Categories =
     {
         "Order Accuracy", "Food Quality", "Service", "Cleanliness"
@@ -17,20 +21,6 @@ public partial class FrmComplaints : Form
 
     private List<ComplaintRow> _allRows = new();
     private int _currentPage = 1;
-
-    private class ComplaintRow
-    {
-        public int ComplaintId { get; set; }
-        public string ComplaintCode { get; set; } = "";
-        public string Category { get; set; } = "";
-        public string Severity { get; set; } = "";
-        public string Subject { get; set; } = "";
-        public string CustomerName { get; set; } = "";
-        public string Status { get; set; } = "";
-        public string AssignedTo { get; set; } = "";
-        public DateTime SubmittedAt { get; set; }
-        public bool IsArchived { get; set; }
-    }
 
     public FrmComplaints()
     {
@@ -49,7 +39,6 @@ public partial class FrmComplaints : Form
             LoadComplaints();
         };
 
-        btnRefresh.Click += (_, __) => LoadComplaints();
         btnFileNew.Click += (_, __) => FileNew();
 
         txtSearch.TextChanged += (_, __) =>
@@ -94,7 +83,6 @@ public partial class FrmComplaints : Form
         AppTheme.StyleInput(txtSearch);
         AppTheme.StyleInput(cmbCategoryFilter);
         AppTheme.StyleInput(cmbStatusFilter);
-        AppTheme.StyleSecondaryButton(btnRefresh);
         AppTheme.StyleSuccessButton(btnFileNew);
         AppTheme.StyleLabel(lblStatus);
         AppTheme.StyleGrid(gridComplaints);
@@ -114,10 +102,7 @@ public partial class FrmComplaints : Form
         AppTheme.StyleSecondaryButton(btnNextPage);
         AppTheme.StyleSecondaryButton(btnLastPage);
 
-        // Allow text to wrap in cells so nothing is cut off
         gridComplaints.DefaultCellStyle.WrapMode = DataGridViewTriState.True;
-
-        // Auto-size row height so wrapped text is fully visible
         gridComplaints.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCells;
     }
 
@@ -149,53 +134,15 @@ public partial class FrmComplaints : Form
     {
         try
         {
-            using var db = AppServices.CreateTenantContext();
-
-            var search = txtSearch.Text.Trim().ToLower();
-            var category = cmbCategoryFilter.SelectedItem?.ToString() ?? "All";
-            var status = cmbStatusFilter.SelectedItem?.ToString() ?? "All";
-            var showArchived = chkShowArchived.Checked;
-
-            var query = db.Complaints
-                .Include(x => x.Customer)
-                .Include(x => x.AssignedToUser)
-                .AsNoTracking()
-                .AsQueryable();
-
-            // Archived filter
-            query = showArchived
-                ? query.Where(x => x.IsArchived)
-                : query.Where(x => !x.IsArchived);
-
-            if (category != "All")
-                query = query.Where(x => x.Category == category);
-            if (status != "All")
-                query = query.Where(x => x.Status == status);
-
-            if (!string.IsNullOrWhiteSpace(search))
+            var filter = new ComplaintFilter
             {
-                query = query.Where(x =>
-                    x.ComplaintCode.ToLower().Contains(search) ||
-                    x.Subject.ToLower().Contains(search) ||
-                    (x.Customer != null && x.Customer.CustomerName.ToLower().Contains(search)));
-            }
+                Search = txtSearch.Text.Trim().ToLower(),
+                Category = cmbCategoryFilter.SelectedItem?.ToString() ?? "All",
+                Status = cmbStatusFilter.SelectedItem?.ToString() ?? "All",
+                ShowArchived = chkShowArchived.Checked
+            };
 
-            _allRows = query
-                .OrderByDescending(x => x.SubmittedAt)
-                .Select(x => new ComplaintRow
-                {
-                    ComplaintId = x.ComplaintId,
-                    ComplaintCode = x.ComplaintCode,
-                    Category = x.Category,
-                    Severity = x.Severity,
-                    Subject = x.Subject,
-                    CustomerName = x.Customer != null ? x.Customer.CustomerName : "(deleted)",
-                    Status = x.Status,
-                    AssignedTo = x.AssignedToUser != null ? x.AssignedToUser.FullName : "—",
-                    SubmittedAt = x.SubmittedAt,
-                    IsArchived = x.IsArchived
-                })
-                .ToList();
+            _allRows = _controller.GetComplaints(filter);
 
             if (_currentPage > TotalPages) _currentPage = Math.Max(1, TotalPages);
             RenderPage();
@@ -314,7 +261,7 @@ public partial class FrmComplaints : Form
     }
 
     // ============================================================
-    //  COLUMN LAYOUT — fixed + fill mix, grid stretches edge-to-edge
+    //  COLUMN LAYOUT
     // ============================================================
 
     private void StyleColumns()
@@ -324,7 +271,6 @@ public partial class FrmComplaints : Form
         if (grid.Columns.Contains("ComplaintId")) grid.Columns["ComplaintId"].Visible = false;
         if (grid.Columns.Contains("IsArchived")) grid.Columns["IsArchived"].Visible = false;
 
-        // ---- Fixed-width columns (sized to fit real content) ----
         SetColumnFixed("ComplaintCode", "Code", 90, DataGridViewContentAlignment.MiddleLeft);
         SetColumnFixed("Category", "Category", 140, DataGridViewContentAlignment.MiddleLeft);
         SetColumnFixed("Severity", "Severity", 90, DataGridViewContentAlignment.MiddleCenter);
@@ -342,11 +288,9 @@ public partial class FrmComplaints : Form
             c.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
         }
 
-        // ---- Fill columns — absorb leftover space so grid spans edge-to-edge ----
         SetColumnFill("Subject", "Subject", 60, 180, DataGridViewContentAlignment.MiddleLeft);
         SetColumnFill("CustomerName", "Customer", 40, 130, DataGridViewContentAlignment.MiddleLeft);
 
-        // ---- Action columns — fixed widths, tight padding, readable font ----
         foreach (var name in new[] { "colView", "colArchive", "colUnarchive" })
         {
             if (!grid.Columns.Contains(name)) continue;
@@ -367,9 +311,6 @@ public partial class FrmComplaints : Form
         grid.CellFormatting += Grid_CellFormatting;
     }
 
-    /// <summary>
-    /// Sets a fixed-width column that never grows or shrinks.
-    /// </summary>
     private void SetColumnFixed(string name, string header, int width, DataGridViewContentAlignment align)
     {
         if (!gridComplaints.Columns.Contains(name)) return;
@@ -381,10 +322,6 @@ public partial class FrmComplaints : Form
         c.DefaultCellStyle.Alignment = align;
     }
 
-    /// <summary>
-    /// Sets a Fill column that absorbs leftover horizontal space.
-    /// FillWeight determines how much of the leftover it takes relative to other Fill columns.
-    /// </summary>
     private void SetColumnFill(string name, string header, int fillWeight, int minWidth, DataGridViewContentAlignment align)
     {
         if (!gridComplaints.Columns.Contains(name)) return;

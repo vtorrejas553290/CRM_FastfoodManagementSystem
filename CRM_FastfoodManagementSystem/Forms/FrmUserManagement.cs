@@ -1,9 +1,17 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using CRM.api.Controllers;
+using CRM.domain.Controllers;
+using CRM.domain.Models;
+using CRM.infrastructure;
 
 namespace CRM.winForms.Forms;
 
 public partial class FrmUserManagement : Form
 {
+    private readonly IUserController _controller = new UserController();
+
+    private List<UserRow> _allRows = new();
+    private int _currentPage = 1;
+
     public FrmUserManagement()
     {
         InitializeComponent();
@@ -14,11 +22,33 @@ public partial class FrmUserManagement : Form
             ("colArchive", "danger"),
             ("colUnarchive", "success"));
 
-        Load += (_, __) => LoadUsers();
-        btnRefresh.Click += (_, __) => LoadUsers();
+        Load += (_, __) =>
+        {
+            InitPager();
+            LoadUsers();
+        };
+
         btnAddUser.Click += BtnAddUser_Click;
-        chkShowArchived.CheckedChanged += (_, __) => LoadUsers();
-        txtSearch.TextChanged += (_, __) => LoadUsers();
+        chkShowArchived.CheckedChanged += (_, __) =>
+        {
+            _currentPage = 1;
+            LoadUsers();
+        };
+        txtSearch.TextChanged += (_, __) =>
+        {
+            _currentPage = 1;
+            LoadUsers();
+        };
+
+        cmbPageSize.SelectedIndexChanged += (_, __) =>
+        {
+            _currentPage = 1;
+            RenderPage();
+        };
+        btnFirstPage.Click += (_, __) => GoToPage(1);
+        btnPrevPage.Click += (_, __) => GoToPage(_currentPage - 1);
+        btnNextPage.Click += (_, __) => GoToPage(_currentPage + 1);
+        btnLastPage.Click += (_, __) => GoToPage(TotalPages);
     }
 
     private void ApplyTheme()
@@ -30,15 +60,24 @@ public partial class FrmUserManagement : Form
             : "User Management — Managers and Staff";
 
         pnlTop.BackColor = AppTheme.Surface;
+        pnlPager.BackColor = AppTheme.Surface;
 
         AppTheme.StyleInput(txtSearch);
-        AppTheme.StyleSecondaryButton(btnRefresh);
         AppTheme.StyleSuccessButton(btnAddUser);
         AppTheme.StyleLabel(lblStatus);
         AppTheme.StyleGrid(gridUsers);
 
         chkShowArchived.Font = AppTheme.FontBody;
         chkShowArchived.ForeColor = AppTheme.TextPrimary;
+
+        AppTheme.StyleLabel(lblPageSize);
+        AppTheme.StyleLabel(lblPageInfo);
+        AppTheme.StyleLabel(lblShowing);
+        AppTheme.StyleInput(cmbPageSize);
+        AppTheme.StyleSecondaryButton(btnFirstPage);
+        AppTheme.StyleSecondaryButton(btnPrevPage);
+        AppTheme.StyleSecondaryButton(btnNextPage);
+        AppTheme.StyleSecondaryButton(btnLastPage);
 
         btnAddUser.Visible = GetAllowedRoleCodes().Length > 0;
     }
@@ -50,59 +89,112 @@ public partial class FrmUserManagement : Form
         return Array.Empty<string>();
     }
 
+    private void InitPager()
+    {
+        cmbPageSize.Items.Clear();
+        cmbPageSize.Items.AddRange(new object[] { "10", "25", "50", "100", "All" });
+        cmbPageSize.SelectedIndex = 1;   // default 25
+    }
+
     private void LoadUsers()
     {
         try
         {
-            using var db = AppServices.CreateTenantContext();
-
-            var search = txtSearch.Text.Trim().ToLower();
-            var showArchived = chkShowArchived.Checked;
-
-            var query = db.Users.Include(x => x.Role).AsNoTracking();
-
-            if (UserSession.IsSuperAdmin)
-                query = query.Where(x => x.Role!.RoleCode == "ADMIN" || x.UserId == UserSession.UserId);
-            else if (UserSession.IsAdmin)
-                query = query.Where(x => x.Role!.RoleCode == "MANAGER" || x.Role!.RoleCode == "STAFF");
-            else
+            if (!UserSession.IsSuperAdmin && !UserSession.IsAdmin)
             {
-                gridUsers.DataSource = new List<object>();
+                _allRows = new List<UserRow>();
+                RenderPage();
                 return;
             }
 
-            // Show only the relevant set: archived when toggled, active otherwise
-            if (showArchived)
-                query = query.Where(x => !x.IsActive);
-            else
-                query = query.Where(x => x.IsActive);
+            var filter = new UserFilter
+            {
+                Search = txtSearch.Text.Trim().ToLower(),
+                ShowArchived = chkShowArchived.Checked,
+                IsSuperAdmin = UserSession.IsSuperAdmin,
+                IsAdmin = UserSession.IsAdmin,
+                CurrentUserId = UserSession.UserId
+            };
 
-            var users = query
-                .Where(x =>
-                    string.IsNullOrWhiteSpace(search) ||
-                    x.Username.ToLower().Contains(search) ||
-                    x.FullName.ToLower().Contains(search))
-                .OrderBy(x => x.UserId)
-                .Select(x => new
-                {
-                    x.UserId,
-                    x.Username,
-                    x.FullName,
-                    x.Email,
-                    Role = x.Role!.RoleName,
-                    Status = x.IsActive ? "Active" : "Archived",
-                    x.CreatedAt
-                })
-                .ToList();
+            _allRows = _controller.GetUsers(filter);
 
-            gridUsers.DataSource = users;
-            BuildActionColumns();
+            if (_currentPage > TotalPages) _currentPage = Math.Max(1, TotalPages);
+
+            RenderPage();
         }
         catch (Exception ex)
         {
             MessageBox.Show(ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
+
+    // ============================================================
+    //  PAGINATION
+    // ============================================================
+
+    private int PageSize
+    {
+        get
+        {
+            var s = cmbPageSize.SelectedItem?.ToString();
+            if (string.IsNullOrEmpty(s) || s == "All") return int.MaxValue;
+            return int.TryParse(s, out int n) && n > 0 ? n : 25;
+        }
+    }
+
+    private int TotalPages
+    {
+        get
+        {
+            if (PageSize == int.MaxValue) return 1;
+            return Math.Max(1, (int)Math.Ceiling(_allRows.Count / (double)PageSize));
+        }
+    }
+
+    private void GoToPage(int page)
+    {
+        int target = Math.Clamp(page, 1, TotalPages);
+        if (target == _currentPage) return;
+
+        _currentPage = target;
+        RenderPage();
+    }
+
+    private void RenderPage()
+    {
+        int size = PageSize;
+        List<UserRow> pageRows;
+
+        if (size == int.MaxValue)
+            pageRows = _allRows;
+        else
+            pageRows = _allRows.Skip((_currentPage - 1) * size).Take(size).ToList();
+
+        gridUsers.DataSource = pageRows;
+        BuildActionColumns();
+        StyleColumns();
+
+        int total = TotalPages;
+        lblPageInfo.Text = $"Page {_currentPage} of {total}";
+
+        int first = _allRows.Count == 0
+            ? 0
+            : ((_currentPage - 1) * (size == int.MaxValue ? _allRows.Count : size)) + 1;
+        int last = size == int.MaxValue
+            ? _allRows.Count
+            : Math.Min(_currentPage * size, _allRows.Count);
+        lblShowing.Text = $"Showing {first}–{last} of {_allRows.Count}";
+
+        bool multiPage = total > 1;
+        btnFirstPage.Enabled = multiPage && _currentPage > 1;
+        btnPrevPage.Enabled = multiPage && _currentPage > 1;
+        btnNextPage.Enabled = multiPage && _currentPage < total;
+        btnLastPage.Enabled = multiPage && _currentPage < total;
+    }
+
+    // ============================================================
+    //  ACTION COLUMNS
+    // ============================================================
 
     private void BuildActionColumns()
     {
@@ -135,6 +227,85 @@ public partial class FrmUserManagement : Form
 
         gridUsers.CellContentClick -= GridUsers_CellContentClick;
         gridUsers.CellContentClick += GridUsers_CellContentClick;
+    }
+
+    private void StyleColumns()
+    {
+        var grid = gridUsers;
+
+        if (grid.Columns.Contains("UserId")) grid.Columns["UserId"].Visible = false;
+
+        SetColumnFixed("Username", "Username", 140, DataGridViewContentAlignment.MiddleLeft);
+        SetColumnFixed("Role", "Role", 130, DataGridViewContentAlignment.MiddleLeft);
+        SetColumnFixed("Status", "Status", 110, DataGridViewContentAlignment.MiddleCenter);
+        SetColumnFixed("CreatedAt", "Created", 130, DataGridViewContentAlignment.MiddleCenter);
+
+        SetColumnFill("FullName", "Full Name", 60, 160, DataGridViewContentAlignment.MiddleLeft);
+        SetColumnFill("Email", "Email", 40, 160, DataGridViewContentAlignment.MiddleLeft);
+
+        if (grid.Columns.Contains("CreatedAt"))
+            grid.Columns["CreatedAt"].DefaultCellStyle.Format = "yyyy-MM-dd";
+
+        foreach (var name in new[] { "colEdit", "colArchive", "colUnarchive" })
+        {
+            if (!grid.Columns.Contains(name)) continue;
+            var c = grid.Columns[name];
+            c.AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
+            c.Resizable = DataGridViewTriState.False;
+            c.DefaultCellStyle.Padding = new Padding(0);
+            c.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+            c.DefaultCellStyle.Font = new Font("Segoe UI", 9F);
+            c.DefaultCellStyle.ForeColor = AppTheme.TextOnDark;
+            c.DefaultCellStyle.SelectionForeColor = AppTheme.TextOnDark;
+            c.HeaderCell.Style.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+            c.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
+            c.MinimumWidth = c.Width;
+        }
+
+        grid.DefaultCellStyle.WrapMode = DataGridViewTriState.True;
+        grid.RowTemplate.Height = 32;
+
+        grid.CellFormatting -= Grid_CellFormatting;
+        grid.CellFormatting += Grid_CellFormatting;
+    }
+
+    private void SetColumnFixed(string name, string header, int width, DataGridViewContentAlignment align)
+    {
+        if (!gridUsers.Columns.Contains(name)) return;
+        var c = gridUsers.Columns[name];
+        c.HeaderText = header;
+        c.AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
+        c.Width = width;
+        c.MinimumWidth = width;
+        c.DefaultCellStyle.Alignment = align;
+    }
+
+    private void SetColumnFill(string name, string header, int fillWeight, int minWidth, DataGridViewContentAlignment align)
+    {
+        if (!gridUsers.Columns.Contains(name)) return;
+        var c = gridUsers.Columns[name];
+        c.HeaderText = header;
+        c.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
+        c.FillWeight = fillWeight;
+        c.MinimumWidth = minWidth;
+        c.DefaultCellStyle.Alignment = align;
+    }
+
+    private void Grid_CellFormatting(object? sender, DataGridViewCellFormattingEventArgs e)
+    {
+        if (e.RowIndex < 0 || e.RowIndex >= gridUsers.Rows.Count) return;
+        var row = gridUsers.Rows[e.RowIndex];
+        if (row.DataBoundItem is null) return;
+        if (gridUsers.Columns[e.ColumnIndex].Name != "Status") return;
+
+        var status = row.Cells["Status"]?.Value?.ToString() ?? "";
+        e.CellStyle.ForeColor = status switch
+        {
+            "Active" => Color.FromArgb(22, 130, 60),
+            "Archived" => Color.FromArgb(120, 120, 120),
+            _ => AppTheme.TextPrimary
+        };
+        e.CellStyle.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
     }
 
     private void GridUsers_CellContentClick(object? sender, DataGridViewCellEventArgs e)

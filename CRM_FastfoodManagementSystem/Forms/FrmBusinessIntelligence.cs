@@ -1,5 +1,7 @@
-﻿using CRM.infrastructure.Data;
-using Microsoft.EntityFrameworkCore;
+﻿using CRM.api.Controllers;
+using CRM.domain.Controllers;
+using CRM.domain.Models;
+using CRM.infrastructure;
 using System.Drawing.Drawing2D;
 
 namespace CRM.winForms.Forms;
@@ -8,14 +10,59 @@ public partial class FrmBusinessIntelligence : Form
 {
     public event Action<string>? NavigateRequested;
 
+    private readonly IBiController _controller = new BiController();
+
+    private bool _syncingDates = false;
+
+    // ---- Chart data (populated from BiSnapshot) ----
+    private List<(DateTime Day, decimal Total)> _salesLast7 = new();
+    private List<(string Name, int Qty)> _topProducts = new();
+    private int[] _ratingDist = new int[5];
+    private List<(string Method, int Count)> _paymentSplit = new();
+    private List<(string Status, int Count)> _retentionSplit = new();
+    private int[] _retentionRecency = new int[6];
+
     public FrmBusinessIntelligence()
     {
         InitializeComponent();
         ApplyTheme();
 
         Load += FrmBusinessIntelligence_Load;
-        btnRefresh.Click += (_, __) => LoadAll();
-        cmbDateRange.SelectedIndexChanged += (_, __) => LoadAll();
+
+        cmbDateRange.SelectedIndexChanged += (_, __) =>
+        {
+            if (_syncingDates) return;
+
+            _syncingDates = true;
+            SyncDatePickersFromPeriod();
+            _syncingDates = false;
+
+            LoadAll();
+        };
+
+        dtpFromDate.ValueChanged += (_, __) =>
+        {
+            if (_syncingDates) return;
+
+            _syncingDates = true;
+            if (cmbDateRange.SelectedItem?.ToString() != "Custom Range")
+                cmbDateRange.SelectedItem = "Custom Range";
+            _syncingDates = false;
+
+            LoadAll();
+        };
+
+        dtpToDate.ValueChanged += (_, __) =>
+        {
+            if (_syncingDates) return;
+
+            _syncingDates = true;
+            if (cmbDateRange.SelectedItem?.ToString() != "Custom Range")
+                cmbDateRange.SelectedItem = "Custom Range";
+            _syncingDates = false;
+
+            LoadAll();
+        };
 
         Resize += (_, __) => ResizeInsightRows();
 
@@ -108,14 +155,12 @@ public partial class FrmBusinessIntelligence : Form
         pnlTopCustomers.BackColor = AppTheme.Surface;
         pnlAtRiskList.BackColor = AppTheme.Surface;
 
-        lblHeaderTitle.Font = AppTheme.FontHeading;
-        lblHeaderTitle.ForeColor = AppTheme.TextPrimary;
-
         lblHeaderSubtitle.ForeColor = AppTheme.TextSecondary;
 
         AppTheme.StyleLabel(lblDateRange);
+        AppTheme.StyleLabel(lblFromDate);
+        AppTheme.StyleLabel(lblToDate);
         AppTheme.StyleInput(cmbDateRange);
-        AppTheme.StyleSecondaryButton(btnRefresh);
         AppTheme.StyleLabel(lblStatus);
 
         lblInsightsTitle.Font = AppTheme.FontSubheading;
@@ -134,12 +179,9 @@ public partial class FrmBusinessIntelligence : Form
         AppTheme.StyleGrid(gridTopCustomers);
         AppTheme.StyleGrid(gridAtRisk);
 
-        foreach (Control c in tblKpiRow1.Controls)
-            StyleKpiCard(c);
-        foreach (Control c in tblKpiRow2.Controls)
-            StyleKpiCard(c);
-        foreach (Control c in tblKpiRow3.Controls)
-            StyleKpiCard(c);
+        foreach (Control c in tblKpiRow1.Controls) StyleKpiCard(c);
+        foreach (Control c in tblKpiRow2.Controls) StyleKpiCard(c);
+        foreach (Control c in tblKpiRow3.Controls) StyleKpiCard(c);
 
         foreach (var pnl in new[]
         {
@@ -157,19 +199,104 @@ public partial class FrmBusinessIntelligence : Form
         card.BackColor = AppTheme.Surface;
 
         var lblValue = card.Controls["lblValue"];
-        if (lblValue is not null)
-            lblValue.ForeColor = AppTheme.Primary20;
+        if (lblValue != null) lblValue.ForeColor = AppTheme.Primary20;
 
         var lblSub = card.Controls["lblSub"];
-        if (lblSub is not null)
-            lblSub.ForeColor = AppTheme.TextSecondary;
+        if (lblSub != null) lblSub.ForeColor = AppTheme.TextSecondary;
     }
 
     private void FrmBusinessIntelligence_Load(object? sender, EventArgs e)
     {
         cmbDateRange.Items.Clear();
-        cmbDateRange.Items.AddRange(new object[] { "All Time", "Today", "Last 7 Days", "Last 30 Days" });
-        cmbDateRange.SelectedIndex = 0;
+        cmbDateRange.Items.AddRange(new object[]
+        {
+            "Today",
+            "Last 7 Days",
+            "Last 30 Days",
+            "This Month",
+            "Last Month",
+            "This Year",
+            "Last Year",
+            "All Time",
+            "Custom Range"
+        });
+
+        _syncingDates = true;
+        cmbDateRange.SelectedItem = "This Month";
+        SyncDatePickersFromPeriod();
+        _syncingDates = false;
+
+        LoadAll();
+
+        BeginInvoke(new Action(() =>
+        {
+            pnlBody.AutoScrollPosition = new Point(0, 0);
+        }));
+    }
+
+    /// <summary>
+    /// Fills From/To pickers from the selected period.
+    /// "Custom Range" leaves them alone.
+    /// </summary>
+    private void SyncDatePickersFromPeriod()
+    {
+        var now = DateTime.UtcNow;
+        var period = cmbDateRange.SelectedItem?.ToString() ?? "This Month";
+
+        DateTime from;
+        DateTime to = now.Date;
+
+        switch (period)
+        {
+            case "Today":
+                from = now.Date;
+                to = now.Date;
+                break;
+            case "Last 7 Days":
+                from = now.Date.AddDays(-7);
+                break;
+            case "Last 30 Days":
+                from = now.Date.AddDays(-30);
+                break;
+            case "This Month":
+                from = new DateTime(now.Year, now.Month, 1);
+                break;
+            case "Last Month":
+                var lastMonthEnd = new DateTime(now.Year, now.Month, 1).AddDays(-1);
+                from = new DateTime(lastMonthEnd.Year, lastMonthEnd.Month, 1);
+                to = lastMonthEnd;
+                break;
+            case "This Year":
+                from = new DateTime(now.Year, 1, 1);
+                break;
+            case "Last Year":
+                from = new DateTime(now.Year - 1, 1, 1);
+                to = new DateTime(now.Year - 1, 12, 31);
+                break;
+            case "All Time":
+                from = new DateTime(2000, 1, 1);
+                break;
+            case "Custom Range":
+                return;
+            default:
+                from = now.Date.AddDays(-30);
+                break;
+        }
+
+        dtpFromDate.Value = from;
+        dtpToDate.Value = to;
+    }
+
+    private (DateTime? from, DateTime? to) GetFromTo()
+    {
+        var period = cmbDateRange.SelectedItem?.ToString() ?? "This Month";
+
+        if (period == "All Time")
+            return (null, null);
+
+        DateTime from = dtpFromDate.Value.Date;
+        DateTime to = dtpToDate.Value.Date.AddDays(1).AddTicks(-1);
+        return (from, to);
     }
 
     // ============================================================
@@ -180,231 +307,93 @@ public partial class FrmBusinessIntelligence : Form
     {
         try
         {
-            using var db = AppServices.CreateTenantContext();
-            var now = DateTime.UtcNow;
-            var range = cmbDateRange.SelectedItem?.ToString() ?? "All Time";
+            var (from, to) = GetFromTo();
 
-            DateTime? from = range switch
+            var filter = new BiFilter
             {
-                "Today" => now.Date,
-                "Last 7 Days" => now.AddDays(-7),
-                "Last 30 Days" => now.AddDays(-30),
-                _ => null
+                Period = cmbDateRange.SelectedItem?.ToString() ?? "This Month",
+                FromDate = from,
+                ToDate = to,
+                Now = DateTime.UtcNow
             };
+
+            var s = _controller.GetSnapshot(filter);
 
             // ---- KPI Row 1 ----
-            decimal totalRevenue = db.Transactions
-                .Where(t => from == null || t.PaidAt >= from)
-                .Select(t => (decimal?)t.AmountPaid)
-                .Sum() ?? 0m;
-            int totalTxns = db.Transactions.Count();
-            SetCardValue(cardRevenue, $"₱{totalRevenue:N0}", $"{totalTxns} total transactions");
-
-            decimal todaySales = db.Transactions
-                .Where(t => t.PaidAt.Date == now.Date)
-                .Select(t => (decimal?)t.AmountPaid)
-                .Sum() ?? 0m;
-            int todayOrders = db.Orders.Count(o => o.OrderDate.Date == now.Date);
-            SetCardValue(cardTodaySales, $"₱{todaySales:N0}", $"{todayOrders} orders today");
-
-            int totalOrders = db.Orders.Count(o => from == null || o.OrderDate >= from);
-            SetCardValue(cardOrders, totalOrders.ToString("N0"), "all statuses");
-
-            decimal totalOrderValue = db.Orders
-                .Where(o => from == null || o.OrderDate >= from)
-                .Select(o => (decimal?)o.TotalAmount)
-                .Sum() ?? 0m;
-            decimal avgOrder = totalOrders > 0 ? totalOrderValue / totalOrders : 0m;
-            SetCardValue(cardAvgOrder, $"₱{avgOrder:N0}", "per order");
-
-            int activeCustomers = db.Customers.Count(c => c.IsActive);
-            int newThisMonth = db.Customers.Count(c => c.CreatedAt >= now.AddDays(-30));
-            SetCardValue(cardCustomers, activeCustomers.ToString("N0"), $"+{newThisMonth} new (30d)");
-
-            int totalPoints = db.Customers.Where(c => c.IsActive).Sum(c => (int?)c.CurrentPoints) ?? 0;
-            SetCardValue(cardPoints, totalPoints.ToString("N0"), $"≈ ₱{totalPoints / 100m:N0} value");
+            SetCardValue(cardRevenue, $"₱{s.TotalRevenue:N0}",
+                $"{s.TotalTransactions} total transactions");
+            SetCardValue(cardTodaySales, $"₱{s.TodaySales:N0}",
+                $"{s.TodayOrders} orders today");
+            SetCardValue(cardOrders, s.TotalOrders.ToString("N0"), "in period");
+            SetCardValue(cardAvgOrder, $"₱{s.AverageOrderValue:N0}", "per order");
+            SetCardValue(cardCustomers, s.ActiveCustomers.ToString("N0"),
+                $"+{s.NewCustomersLast30Days} new (30d)");
+            SetCardValue(cardPoints, s.TotalPoints.ToString("N0"),
+                $"≈ ₱{s.TotalPoints / 100m:N0} value");
 
             // ---- KPI Row 2 ----
-            int lowStock = db.Inventories.Count(i => i.QuantityOnHand <= i.ReorderLevel);
-            SetCardValue(cardLowStock, lowStock.ToString("N0"), "need restock");
+            SetCardValue(cardLowStock, s.LowStockCount.ToString("N0"), "need restock");
+            SetCardValue(cardOpenFeedback, s.OpenFeedbackCount.ToString("N0"), "unreviewed");
+            SetCardValue(cardAvgRating, s.AverageRating.ToString("0.0") + " ★",
+                $"{s.TotalFeedbackCount} ratings");
+            SetCardValue(cardPromos, s.ActivePromotionsCount.ToString("N0"), "running now");
 
-            int openFeedback = db.CustomerFeedbacks.Count(f => f.Status == "New");
-            SetCardValue(cardOpenFeedback, openFeedback.ToString("N0"), "unreviewed");
-
-            double avgRating = db.CustomerFeedbacks.Any()
-                ? db.CustomerFeedbacks.Average(f => (double)f.Rating)
-                : 0;
-            int totalFeedback = db.CustomerFeedbacks.Count();
-            SetCardValue(cardAvgRating, avgRating.ToString("0.0") + " ★", $"{totalFeedback} ratings");
-
-            int activePromos = db.Promotions.Count(p =>
-                p.IsActive && p.StartDate <= now && p.EndDate >= now);
-            SetCardValue(cardPromos, activePromos.ToString("N0"), "running now");
-
-            // ---- KPI Row 3 (retention) ----
-            var cutoffAtRisk = now.AddDays(-30);
-            var cutoffDormant = now.AddDays(-60);
-
-            var customerStats = db.Customers
-                .AsNoTracking()
-                .Where(c => c.IsActive)
-                .Select(c => new
-                {
-                    c.CustomerId,
-                    c.CustomerName,
-                    c.CurrentPoints,
-                    LastOrderAt = c.Orders
-                        .Where(o => o.Status != "Cancelled")
-                        .Max(o => (DateTime?)o.OrderDate),
-                    TotalOrders = c.Orders.Count(o => o.Status != "Cancelled")
-                })
-                .ToList();
-
-            int cntActive = 0;
-            int cntAtRisk = 0;
-            int cntDormant = 0;
-            int cntNever = 0;
-
-            var atRiskList = new List<(string Name, int Days, int Points, string Status)>();
-
-            foreach (var c in customerStats)
-            {
-                string status;
-                int days = 0;
-
-                if (c.LastOrderAt == null)
-                {
-                    status = "Never";
-                    cntNever++;
-                }
-                else
-                {
-                    days = (int)(now - c.LastOrderAt.Value).TotalDays;
-                    if (c.LastOrderAt < cutoffDormant) { status = "Dormant"; cntDormant++; }
-                    else if (c.LastOrderAt < cutoffAtRisk) { status = "At Risk"; cntAtRisk++; }
-                    else { status = "Active"; cntActive++; }
-                }
-
-                if (status == "At Risk" || status == "Dormant")
-                    atRiskList.Add((c.CustomerName, days, c.CurrentPoints, status));
-            }
-
-            SetCardValue(cardAtRisk, cntAtRisk.ToString("N0"), "missed 30-60d");
-            SetCardValue(cardDormant, cntDormant.ToString("N0"), "no order in 60+d");
-            SetCardValue(cardNeverOrdered, cntNever.ToString("N0"), "signed up only");
-
-            decimal pointsLiability = totalPoints / 100m;
-            SetCardValue(cardPointsLiability, $"₱{pointsLiability:N0}",
-                $"{totalPoints:N0} pts outstanding");
-
-            _retentionSplit = new List<(string Status, int Count)>
-            {
-                ("Active", cntActive),
-                ("At Risk", cntAtRisk),
-                ("Dormant", cntDormant),
-                ("Never", cntNever)
-            };
-
-            _retentionRecency = new int[6];
-            foreach (var c in customerStats)
-            {
-                if (c.LastOrderAt == null) continue;
-                int d = (int)(now - c.LastOrderAt.Value).TotalDays;
-                if (d <= 7) _retentionRecency[0]++;
-                else if (d <= 30) _retentionRecency[1]++;
-                else if (d <= 60) _retentionRecency[2]++;
-                else if (d <= 90) _retentionRecency[3]++;
-                else if (d <= 180) _retentionRecency[4]++;
-                else _retentionRecency[5]++;
-            }
-
-            gridAtRisk.DataSource = atRiskList
-                .OrderByDescending(x => x.Days)
-                .Take(15)
-                .Select(x => new
-                {
-                    Customer = x.Name,
-                    DaysSince = x.Days,
-                    Points = x.Points,
-                    Status = x.Status
-                })
-                .ToList();
-
-            // ---- Charts ----
-            _salesLast7 = Enumerable.Range(0, 7)
-                .Select(i => now.Date.AddDays(-6 + i))
-                .Select(d => (
-                    Day: d,
-                    Total: db.Transactions.Where(t => t.PaidAt.Date == d).Sum(t => (decimal?)t.AmountPaid) ?? 0m
-                ))
-                .ToList();
-
-            _topProducts = db.OrderItems
-                .Include(oi => oi.Product)
-                .Where(oi => from == null || oi.Order!.OrderDate >= from)
-                .GroupBy(oi => oi.Product!.ProductName)
-                .Select(g => new { Name = g.Key, Qty = g.Sum(oi => oi.Quantity) })
-                .OrderByDescending(x => x.Qty)
-                .Take(5)
-                .ToList()
-                .Select(x => (x.Name, x.Qty))
-                .ToList();
-
-            _ratingDist = new int[5];
-            foreach (var fb in db.CustomerFeedbacks.Where(f => from == null || f.SubmittedAt >= from))
-            {
-                int r = Math.Clamp(fb.Rating, 1, 5);
-                _ratingDist[r - 1]++;
-            }
-
-            _paymentSplit = db.Transactions
-                .Where(t => from == null || t.PaidAt >= from)
-                .GroupBy(t => t.PaymentMethod)
-                .Select(g => new { Method = g.Key, Count = g.Count() })
-                .ToList()
-                .Select(x => (x.Method, x.Count))
-                .ToList();
+            // ---- KPI Row 3 ----
+            SetCardValue(cardAtRisk, s.AtRiskCount.ToString("N0"), "missed 30-60d");
+            SetCardValue(cardDormant, s.DormantCount.ToString("N0"), "no order in 60+d");
+            SetCardValue(cardNeverOrdered, s.NeverOrderedCount.ToString("N0"), "signed up only");
+            SetCardValue(cardPointsLiability, $"₱{s.PointsLiability:N0}",
+                $"{s.TotalPoints:N0} pts outstanding");
 
             // ---- Tables ----
-            gridRecentOrders.DataSource = db.Orders
-                .Include(o => o.Customer)
-                .OrderByDescending(o => o.OrderDate)
-                .Take(10)
-                .ToList()
-                .Select(o => new
+            gridAtRisk.DataSource = s.AtRiskList
+                .Select(r => new
                 {
-                    o.OrderCode,
-                    Customer = o.Customer?.CustomerName ?? "(deleted)",
-                    o.TotalAmount,
-                    o.Status,
-                    o.OrderDate
+                    Customer = r.Cells.GetValueOrDefault("Customer"),
+                    DaysSince = r.Cells.GetValueOrDefault("DaysSince"),
+                    Points = r.Cells.GetValueOrDefault("Points"),
+                    Status = r.Cells.GetValueOrDefault("Status")
                 })
                 .ToList();
 
-            gridTopCustomers.DataSource = db.Orders
-                .Include(o => o.Customer)
-                .Where(o => from == null || o.OrderDate >= from)
-                .ToList()
-                .GroupBy(o => new
+            gridRecentOrders.DataSource = s.RecentOrders
+                .Select(r => new
                 {
-                    o.CustomerId,
-                    Name = o.Customer?.CustomerName ?? "(deleted)"
+                    OrderCode = r.Cells.GetValueOrDefault("OrderCode"),
+                    Customer = r.Cells.GetValueOrDefault("Customer"),
+                    TotalAmount = r.Cells.GetValueOrDefault("TotalAmount"),
+                    Status = r.Cells.GetValueOrDefault("Status"),
+                    OrderDate = r.Cells.GetValueOrDefault("OrderDate")
                 })
-                .Select(g => new
-                {
-                    Customer = g.Key.Name,
-                    Orders = g.Count(),
-                    TotalSpent = g.Sum(o => o.TotalAmount)
-                })
-                .OrderByDescending(x => x.TotalSpent)
-                .Take(10)
                 .ToList();
 
-            BuildInsights(db, now, from, totalOrders, avgOrder,
-                activeCustomers, lowStock, openFeedback, avgRating,
-                activePromos, totalPoints);
+            gridTopCustomers.DataSource = s.TopCustomers
+                .Select(r => new
+                {
+                    Customer = r.Cells.GetValueOrDefault("Customer"),
+                    Orders = r.Cells.GetValueOrDefault("Orders"),
+                    TotalSpent = r.Cells.GetValueOrDefault("TotalSpent")
+                })
+                .ToList();
 
-            BuildRetentionInsights(cntActive, cntAtRisk, cntDormant, cntNever, totalPoints);
+            // ---- Chart data ----
+            _salesLast7 = s.SalesLast7
+                .Select(x => (x.Day, x.Total))
+                .ToList();
+            _topProducts = s.TopProducts
+                .Select(x => (x.Name, x.Qty))
+                .ToList();
+            _ratingDist = s.RatingDistribution;
+            _paymentSplit = s.PaymentSplit
+                .Select(x => (x.Method, x.Count))
+                .ToList();
+            _retentionSplit = s.RetentionSplit
+                .Select(x => (x.Status, x.Count))
+                .ToList();
+            _retentionRecency = s.RetentionRecency;
+
+            // ---- Insights ----
+            BuildInsights(s);
 
             pnlSalesChart.Invalidate();
             pnlTopProductsChart.Invalidate();
@@ -413,7 +402,8 @@ public partial class FrmBusinessIntelligence : Form
             pnlRetentionSplitChart.Invalidate();
             pnlRetentionRecencyChart.Invalidate();
 
-            lblStatus.Text = $"Updated {DateTime.Now:HH:mm:ss}  —  Range: {range}";
+            lblStatus.Text =
+                $"Updated {DateTime.Now:HH:mm:ss}  —  Period: {filter.Period}";
         }
         catch (Exception ex)
         {
@@ -421,220 +411,23 @@ public partial class FrmBusinessIntelligence : Form
         }
     }
 
-    // ============================================================
-    //  RETENTION INSIGHTS (appended after the standard ones)
-    // ============================================================
-
-    private void BuildRetentionInsights(int active, int atRisk, int dormant, int never, int totalPoints)
-    {
-        int total = active + atRisk + dormant + never;
-        if (total == 0) return;
-
-        var insights = new List<(string Icon, Color Color, string Text)>();
-
-        int atRiskPct = atRisk * 100 / total;
-        int dormantPct = dormant * 100 / total;
-
-        if (dormant > 0)
-            insights.Add(("🚨", AppTheme.Danger,
-                $"{dormant} customer(s) are DORMANT ({dormantPct}% of base). Reach out with a win-back promotion."));
-
-        if (atRisk > 0)
-            insights.Add(("⚠️", AppTheme.WarningAmber,
-                $"{atRisk} customer(s) are AT RISK ({atRiskPct}% of base). They ordered 30–60 days ago — a reminder could bring them back."));
-
-        if (never > 0)
-            insights.Add(("👤", AppTheme.TextSecondary,
-                $"{never} customer(s) signed up but NEVER ordered. Consider a first-purchase incentive."));
-
-        if (active > 0 && dormant + atRisk > active)
-            insights.Add(("📊", AppTheme.Danger,
-                $"Retention concern: {atRisk + dormant} customers are slipping away vs {active} still active."));
-
-        decimal liability = totalPoints / 100m;
-        if (liability > 500)
-            insights.Add(("💰", AppTheme.WarningAmber,
-                $"Outstanding loyalty liability: ₱{liability:N0} ({totalPoints:N0} points). Consider a redemption campaign to reduce liability."));
-
-        foreach (var (icon, color, text) in insights)
-        {
-            var row = BuildInsightRow(icon, color, text);
-            flowInsights.Controls.Add(row);
-        }
-    }
-
-    // ============================================================
-    //  INSIGHTS
-    // ============================================================
-
-    private void BuildInsights(
-        TenantCrmDbContext db, DateTime now, DateTime? from,
-        int totalOrders, decimal avgOrder, int activeCustomers,
-        int lowStock, int openFeedback, double avgRating,
-        int activePromos, int totalPoints)
+    private void BuildInsights(BiSnapshot s)
     {
         flowInsights.SuspendLayout();
         flowInsights.Controls.Clear();
 
-        var insights = new List<(string Icon, Color Color, string Text)>();
-
-        decimal thisWeek = db.Transactions
-            .Where(t => t.PaidAt >= now.Date.AddDays(-6))
-            .Select(t => (decimal?)t.AmountPaid).Sum() ?? 0m;
-
-        decimal lastWeek = db.Transactions
-            .Where(t => t.PaidAt >= now.Date.AddDays(-13) && t.PaidAt < now.Date.AddDays(-6))
-            .Select(t => (decimal?)t.AmountPaid).Sum() ?? 0m;
-
-        if (lastWeek > 0)
+        foreach (var insight in s.Insights)
         {
-            double pct = (double)((thisWeek - lastWeek) / lastWeek * 100);
-            if (pct >= 5)
-                insights.Add(("📈", AppTheme.SuccessGreen,
-                    $"Sales are trending UP — ₱{thisWeek:N0} this week vs ₱{lastWeek:N0} last week ({pct:N0}% increase)."));
-            else if (pct <= -5)
-                insights.Add(("📉", AppTheme.Danger,
-                    $"Sales are DOWN — ₱{thisWeek:N0} this week vs ₱{lastWeek:N0} last week ({Math.Abs(pct):N0}% decrease). Consider a promotion."));
-            else
-                insights.Add(("➖", AppTheme.TextSecondary,
-                    $"Sales are steady — ₱{thisWeek:N0} this week vs ₱{lastWeek:N0} last week."));
-        }
-        else if (thisWeek > 0)
-        {
-            insights.Add(("📈", AppTheme.SuccessGreen,
-                $"Sales this week: ₱{thisWeek:N0}. No prior week to compare."));
-        }
-
-        if (_topProducts.Count > 0)
-        {
-            var top = _topProducts[0];
-            insights.Add(("🏆", AppTheme.WarningAmber,
-                $"Best performer: '{top.Name}' — {top.Qty:N0} sold."));
-        }
-
-        if (avgRating > 0)
-        {
-            int fiveStar = _ratingDist.Length > 4 ? _ratingDist[4] : 0;
-            int totalRatings = _ratingDist.Sum();
-            double fiveStarPct = totalRatings > 0 ? fiveStar * 100.0 / totalRatings : 0;
-
-            if (avgRating >= 4.5)
-                insights.Add(("⭐", AppTheme.SuccessGreen,
-                    $"Customer satisfaction is excellent — average {avgRating:0.0}★ ({fiveStarPct:N0}% are 5-star)."));
-            else if (avgRating >= 3.5)
-                insights.Add(("⭐", AppTheme.WarningAmber,
-                    $"Customer satisfaction is decent — average {avgRating:0.0}★. {openFeedback} reviews still unreviewed."));
-            else
-                insights.Add(("⚠️", AppTheme.Danger,
-                    $"Customer satisfaction is LOW — average {avgRating:0.0}★. Investigate recent complaints."));
-        }
-
-        if (lowStock > 0)
-        {
-            var lowStockItems = db.Inventories
-                .Include(i => i.Product)
-                .Where(i => i.QuantityOnHand <= i.ReorderLevel)
-                .Take(3)
-                .ToList()
-                .Select(i => $"{i.Product?.ProductName ?? "?"} ({i.QuantityOnHand:N0})")
-                .ToList();
-
-            insights.Add(("📦", AppTheme.Danger,
-                $"{lowStock} product(s) need restocking: {string.Join(", ", lowStockItems)}."));
-        }
-
-        var customerOrderCounts = db.Orders
-            .Where(o => from == null || o.OrderDate >= from)
-            .GroupBy(o => o.CustomerId)
-            .Select(g => new
+            Color accent = insight.Semantic switch
             {
-                CustomerId = g.Key,
-                Count = g.Count(),
-                Spent = g.Sum(o => o.TotalAmount)
-            })
-            .ToList();
+                "success" => AppTheme.SuccessGreen,
+                "warning" => AppTheme.WarningAmber,
+                "danger" => AppTheme.Danger,
+                "info" => AppTheme.Primary20,
+                _ => AppTheme.TextSecondary
+            };
 
-        int repeat = customerOrderCounts.Count(x => x.Count > 1);
-        int once = customerOrderCounts.Count(x => x.Count == 1);
-
-        if (repeat > 0 && once > 0)
-        {
-            decimal avgRepeat = customerOrderCounts.Where(x => x.Count > 1).Average(x => x.Spent);
-            decimal avgOnce = customerOrderCounts.Where(x => x.Count == 1).Average(x => x.Spent);
-            double ratio = avgOnce > 0 ? (double)(avgRepeat / avgOnce) : 0;
-
-            insights.Add(("🔄", AppTheme.Primary20,
-                $"{repeat} repeat customers ({repeat * 100 / (repeat + once)}% of base). Their average spend is ₱{avgRepeat:N0} — {ratio:0.0}x higher than one-time buyers."));
-        }
-
-        var promoStats = db.PromotionRedemptions
-            .GroupBy(r => r.PromotionId)
-            .Select(g => new
-            {
-                PromoId = g.Key,
-                Uses = g.Count(),
-                Total = g.Sum(r => r.DiscountApplied)
-            })
-            .OrderByDescending(x => x.Uses)
-            .Take(1)
-            .ToList();
-
-        if (promoStats.Any())
-        {
-            var top = promoStats[0];
-            var promo = db.Promotions.FirstOrDefault(p => p.PromotionId == top.PromoId);
-            if (promo is not null)
-            {
-                insights.Add(("🎁", AppTheme.Primary20,
-                    $"Top promo: '{promo.PromotionCode}' used {top.Uses} times, giving ₱{top.Total:N0} in discounts."));
-            }
-        }
-
-        int lowRatingCount = db.CustomerFeedbacks.Count(f => f.Rating <= 2);
-        if (lowRatingCount > 0)
-        {
-            insights.Add(("⚠️", AppTheme.WarningAmber,
-                $"{lowRatingCount} customer(s) gave low ratings (≤2★). Consider creating retention offers to win them back."));
-        }
-
-        if (_paymentSplit.Count >= 2)
-        {
-            var top = _paymentSplit.OrderByDescending(x => x.Count).First();
-            int total = _paymentSplit.Sum(x => x.Count);
-            int pct = total > 0 ? top.Count * 100 / total : 0;
-            insights.Add(("💳", AppTheme.TextSecondary,
-                $"Payment preference: '{top.Method}' is dominant at {pct}% of transactions."));
-        }
-
-        if (totalPoints > 0)
-        {
-            int customersWithPoints = db.Customers.Count(c => c.CurrentPoints > 0);
-            insights.Add(("🎯", AppTheme.SuccessGreen,
-                $"{customersWithPoints} customer(s) currently hold {totalPoints:N0} loyalty points (≈ ₱{totalPoints / 100m:N0} liability)."));
-        }
-
-        var lastSaleDate = db.Transactions
-            .OrderByDescending(t => t.PaidAt)
-            .Select(t => (DateTime?)t.PaidAt)
-            .FirstOrDefault();
-
-        if (lastSaleDate.HasValue)
-        {
-            int daysSinceLastSale = (int)(now - lastSaleDate.Value).TotalDays;
-            if (daysSinceLastSale >= 3)
-                insights.Add(("💤", AppTheme.Danger,
-                    $"No sales recorded in {daysSinceLastSale} days. Check system or staff activity."));
-        }
-
-        if (insights.Count == 0)
-        {
-            insights.Add(("ℹ️", AppTheme.TextSecondary,
-                "Not enough data yet to generate insights. Start recording orders to see recommendations."));
-        }
-
-        foreach (var (icon, color, text) in insights)
-        {
-            var row = BuildInsightRow(icon, color, text);
+            var row = BuildInsightRow(insight.Icon, accent, insight.Text);
             flowInsights.Controls.Add(row);
         }
 
@@ -727,7 +520,7 @@ public partial class FrmBusinessIntelligence : Form
             var lblText = row.Controls.OfType<Label>()
                 .FirstOrDefault(l => l.AutoSize == false && l.Location.X > 30);
 
-            if (lblText is not null)
+            if (lblText != null)
                 lblText.Width = availableWidth - 80;
         }
 
@@ -739,24 +532,14 @@ public partial class FrmBusinessIntelligence : Form
         var lblValue = card.Controls["lblValue"] as Label;
         var lblSub = card.Controls["lblSub"] as Label;
 
-        if (lblValue is not null) lblValue.Text = value;
-        if (lblSub is not null) lblSub.Text = subtitle;
+        if (lblValue != null) lblValue.Text = value;
+        if (lblSub != null) lblSub.Text = subtitle;
     }
-
-    // ============================================================
-    //  CHART DATA
-    // ============================================================
-    private List<(DateTime Day, decimal Total)> _salesLast7 = new();
-    private List<(string Name, int Qty)> _topProducts = new();
-    private int[] _ratingDist = new int[5];
-    private List<(string Method, int Count)> _paymentSplit = new();
-
-    private List<(string Status, int Count)> _retentionSplit = new();
-    private int[] _retentionRecency = new int[6];
 
     // ============================================================
     //  CHART PAINTER
     // ============================================================
+
     private void ChartPanel_Paint(object? sender, PaintEventArgs e)
     {
         if (sender is not Panel pnl) return;
@@ -794,10 +577,6 @@ public partial class FrmBusinessIntelligence : Form
         else if (pnl == pnlRetentionRecencyChart)
             DrawRetentionRecency(g, area, titleFont, textFont, smallFont, titleBrush, textBrush, barBrush, gridPen);
     }
-
-    // ============================================================
-    //  EXISTING CHARTS (restored — these were missing from your file)
-    // ============================================================
 
     private void DrawSalesChart(Graphics g, Rectangle area, Font titleFont, Font textFont, Font smallFont,
         Brush titleBrush, Brush textBrush, Brush barBrush, Pen gridPen)
@@ -958,10 +737,6 @@ public partial class FrmBusinessIntelligence : Form
             ly += 28;
         }
     }
-
-    // ============================================================
-    //  NEW: retention charts
-    // ============================================================
 
     private void DrawRetentionSplit(Graphics g, Rectangle area,
         Font titleFont, Font textFont, Font smallFont,

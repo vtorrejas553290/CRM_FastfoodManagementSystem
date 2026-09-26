@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using System.Diagnostics;
+using CRM.infrastructure;
 
 namespace CRM.winForms.Forms;
 

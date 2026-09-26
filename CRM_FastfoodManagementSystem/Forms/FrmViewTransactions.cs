@@ -1,29 +1,19 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using CRM.api.Controllers;
+using CRM.domain.Controllers;
+using CRM.domain.Models;
+using CRM.infrastructure;
+using Microsoft.EntityFrameworkCore;
 
 namespace CRM.winForms.Forms;
 
 public partial class FrmViewTransactions : Form
 {
-    // ---- Pagination state ----
-    private List<TxnRow> _allRows = new();
+    private readonly ITransactionController _controller = new TransactionController();
+
+    private List<TransactionRow> _allRows = new();
     private int _currentPage = 1;
 
-    /// <summary>
-    /// Snapshot row type. Concrete class because anonymous types can't be
-    /// stored in a field.
-    /// </summary>
-    private class TxnRow
-    {
-        public int TransactionId { get; set; }
-        public string OrderCode { get; set; } = "";
-        public string Customer { get; set; } = "";
-        public string PaymentMethod { get; set; } = "";
-        public decimal Total { get; set; }
-        public decimal AmountPaid { get; set; }
-        public decimal ChangeDue { get; set; }
-        public string Reference { get; set; } = "";
-        public DateTime PaidAt { get; set; }
-    }
+    private bool _syncingDates = false;
 
     public FrmViewTransactions()
     {
@@ -40,8 +30,6 @@ public partial class FrmViewTransactions : Form
             LoadTransactions();
         };
 
-        btnRefresh.Click += (_, __) => LoadTransactions();
-
         txtSearch.TextChanged += (_, __) =>
         {
             _currentPage = 1;
@@ -56,11 +44,42 @@ public partial class FrmViewTransactions : Form
 
         cmbDateFilter.SelectedIndexChanged += (_, __) =>
         {
+            if (_syncingDates) return;
+
+            _syncingDates = true;
+            SyncDatePickersFromRange();
+            _syncingDates = false;
+
             _currentPage = 1;
             LoadTransactions();
         };
 
-        // Pagination events
+        dtpFromDate.ValueChanged += (_, __) =>
+        {
+            if (_syncingDates) return;
+
+            _syncingDates = true;
+            if (cmbDateFilter.SelectedItem?.ToString() != "Custom")
+                cmbDateFilter.SelectedItem = "Custom";
+            _syncingDates = false;
+
+            _currentPage = 1;
+            LoadTransactions();
+        };
+
+        dtpToDate.ValueChanged += (_, __) =>
+        {
+            if (_syncingDates) return;
+
+            _syncingDates = true;
+            if (cmbDateFilter.SelectedItem?.ToString() != "Custom")
+                cmbDateFilter.SelectedItem = "Custom";
+            _syncingDates = false;
+
+            _currentPage = 1;
+            LoadTransactions();
+        };
+
         cmbPageSize.SelectedIndexChanged += (_, __) =>
         {
             _currentPage = 1;
@@ -82,16 +101,16 @@ public partial class FrmViewTransactions : Form
         AppTheme.StyleInput(txtSearch);
         AppTheme.StyleInput(cmbMethodFilter);
         AppTheme.StyleInput(cmbDateFilter);
-        AppTheme.StyleSecondaryButton(btnRefresh);
         AppTheme.StyleGrid(gridTransactions);
 
         AppTheme.StyleLabel(lblMethodFilter);
         AppTheme.StyleLabel(lblDateFilter);
+        AppTheme.StyleLabel(lblFromDate);
+        AppTheme.StyleLabel(lblToDate);
 
         lblTotal.Font = AppTheme.FontSubheading;
         lblTotal.ForeColor = AppTheme.SuccessGreen;
 
-        // Pager styling
         AppTheme.StyleLabel(lblPageSize);
         AppTheme.StyleLabel(lblPageInfo);
         AppTheme.StyleLabel(lblShowing);
@@ -109,73 +128,82 @@ public partial class FrmViewTransactions : Form
         cmbMethodFilter.SelectedIndex = 0;
 
         cmbDateFilter.Items.Clear();
-        cmbDateFilter.Items.AddRange(new object[] { "All", "Today", "Last 7 Days", "Last 30 Days" });
-        cmbDateFilter.SelectedIndex = 0;
+        cmbDateFilter.Items.AddRange(new object[]
+        {
+            "All", "Today", "Last 7 Days", "Last 30 Days", "Custom"
+        });
+
+        _syncingDates = true;
+        cmbDateFilter.SelectedIndex = 0;   // "All"
+        SyncDatePickersFromRange();
+        _syncingDates = false;
+    }
+
+    private void SyncDatePickersFromRange()
+    {
+        var now = DateTime.UtcNow;
+        var sel = cmbDateFilter.SelectedItem?.ToString() ?? "All";
+
+        switch (sel)
+        {
+            case "Today":
+                dtpFromDate.Value = now.Date;
+                dtpToDate.Value = now.Date;
+                break;
+            case "Last 7 Days":
+                dtpFromDate.Value = now.AddDays(-7).Date;
+                dtpToDate.Value = now.Date;
+                break;
+            case "Last 30 Days":
+                dtpFromDate.Value = now.AddDays(-30).Date;
+                dtpToDate.Value = now.Date;
+                break;
+            case "All":
+            case "Custom":
+                // leave current picker values alone
+                break;
+        }
+    }
+
+    private (DateTime? from, DateTime? to) GetFromTo()
+    {
+        var sel = cmbDateFilter.SelectedItem?.ToString() ?? "All";
+
+        if (sel == "All")
+            return (null, null);
+
+        DateTime from = dtpFromDate.Value.Date;
+        DateTime to = dtpToDate.Value.Date.AddDays(1).AddTicks(-1);
+        return (from, to);
     }
 
     private void InitPager()
     {
         cmbPageSize.Items.Clear();
         cmbPageSize.Items.AddRange(new object[] { "10", "25", "50", "100", "All" });
-        cmbPageSize.SelectedIndex = 1;   // default 25
+        cmbPageSize.SelectedIndex = 1;
     }
-
-    // ============================================================
-    //  DATA LOAD
-    // ============================================================
 
     private void LoadTransactions()
     {
         try
         {
-            using var db = AppServices.CreateTenantContext();
+            var (from, to) = GetFromTo();
 
-            var search = txtSearch.Text.Trim().ToLower();
-            var method = cmbMethodFilter.SelectedItem?.ToString() ?? "All";
-            var dateRange = cmbDateFilter.SelectedItem?.ToString() ?? "All";
+            var filter = new TransactionFilter
+            {
+                Search = txtSearch.Text.Trim().ToLower(),
+                Method = cmbMethodFilter.SelectedItem?.ToString() ?? "All",
+                DateRange = cmbDateFilter.SelectedItem?.ToString() ?? "All",
+                FromDate = from,
+                ToDate = to
+            };
 
-            var query = db.Transactions
-                .Include(x => x.Order!)
-                    .ThenInclude(o => o.Customer)
-                .AsNoTracking();
+            _allRows = _controller.GetTransactions(filter);
 
-            if (method != "All")
-                query = query.Where(x => x.PaymentMethod == method);
-
-            var now = DateTime.UtcNow;
-
-            if (dateRange == "Today")
-                query = query.Where(x => x.PaidAt.Date == now.Date);
-            else if (dateRange == "Last 7 Days")
-                query = query.Where(x => x.PaidAt >= now.AddDays(-7));
-            else if (dateRange == "Last 30 Days")
-                query = query.Where(x => x.PaidAt >= now.AddDays(-30));
-
-            _allRows = query
-                .Where(x =>
-                    string.IsNullOrWhiteSpace(search) ||
-                    (x.Order != null && x.Order.OrderCode.ToLower().Contains(search)) ||
-                    (x.Order!.Customer != null && x.Order.Customer.CustomerName.ToLower().Contains(search)))
-                .OrderByDescending(x => x.PaidAt)
-                .Select(x => new TxnRow
-                {
-                    TransactionId = x.TransactionId,
-                    OrderCode = x.Order!.OrderCode,
-                    Customer = x.Order.Customer != null ? x.Order.Customer.CustomerName : "(deleted)",
-                    PaymentMethod = x.PaymentMethod,
-                    Total = x.Order.TotalAmount,
-                    AmountPaid = x.AmountPaid,
-                    ChangeDue = x.ChangeDue,
-                    Reference = x.ReferenceNumber ?? "-",
-                    PaidAt = x.PaidAt
-                })
-                .ToList();
-
-            // Total sales across the full filtered set (not just the page)
             decimal totalSales = _allRows.Sum(x => x.Total);
             lblTotal.Text = $"Total Sales: ₱{totalSales:N2}  ({_allRows.Count} transactions)";
 
-            // Clamp page if filters shrank the set
             if (_currentPage > TotalPages) _currentPage = Math.Max(1, TotalPages);
 
             RenderPage();
@@ -185,10 +213,6 @@ public partial class FrmViewTransactions : Form
             MessageBox.Show(ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
-
-    // ============================================================
-    //  PAGINATION
-    // ============================================================
 
     private int PageSize
     {
@@ -221,7 +245,7 @@ public partial class FrmViewTransactions : Form
     private void RenderPage()
     {
         int size = PageSize;
-        List<TxnRow> pageRows;
+        List<TransactionRow> pageRows;
 
         if (size == int.MaxValue)
             pageRows = _allRows;
@@ -242,6 +266,7 @@ public partial class FrmViewTransactions : Form
         }).ToList();
 
         BuildActionColumns();
+        StyleColumns();
 
         int total = TotalPages;
         lblPageInfo.Text = $"Page {_currentPage} of {total}";
@@ -261,10 +286,6 @@ public partial class FrmViewTransactions : Form
         btnLastPage.Enabled = multiPage && _currentPage < total;
     }
 
-    // ============================================================
-    //  ACTION COLUMNS
-    // ============================================================
-
     private void BuildActionColumns()
     {
         for (int i = gridTransactions.Columns.Count - 1; i >= 0; i--)
@@ -281,6 +302,69 @@ public partial class FrmViewTransactions : Form
 
         gridTransactions.CellContentClick -= GridTransactions_CellContentClick;
         gridTransactions.CellContentClick += GridTransactions_CellContentClick;
+    }
+
+    private void StyleColumns()
+    {
+        var grid = gridTransactions;
+
+        if (grid.Columns.Contains("TransactionId")) grid.Columns["TransactionId"].Visible = false;
+
+        SetColumnFixed("OrderCode", "Order Code", 130, DataGridViewContentAlignment.MiddleLeft);
+        SetColumnFixed("PaymentMethod", "Method", 110, DataGridViewContentAlignment.MiddleCenter);
+        SetColumnFixed("Total", "Total", 120, DataGridViewContentAlignment.MiddleRight);
+        SetColumnFixed("AmountPaid", "Paid", 120, DataGridViewContentAlignment.MiddleRight);
+        SetColumnFixed("ChangeDue", "Change", 110, DataGridViewContentAlignment.MiddleRight);
+        SetColumnFixed("PaidAt", "Paid At", 160, DataGridViewContentAlignment.MiddleCenter);
+
+        SetColumnFill("Customer", "Customer", 100, 150, DataGridViewContentAlignment.MiddleLeft);
+        SetColumnFill("Reference", "Reference", 40, 120, DataGridViewContentAlignment.MiddleLeft);
+
+        if (grid.Columns.Contains("Total")) grid.Columns["Total"].DefaultCellStyle.Format = "N2";
+        if (grid.Columns.Contains("AmountPaid")) grid.Columns["AmountPaid"].DefaultCellStyle.Format = "N2";
+        if (grid.Columns.Contains("ChangeDue")) grid.Columns["ChangeDue"].DefaultCellStyle.Format = "N2";
+        if (grid.Columns.Contains("PaidAt")) grid.Columns["PaidAt"].DefaultCellStyle.Format = "yyyy-MM-dd HH:mm";
+
+        foreach (var name in new[] { "colView" })
+        {
+            if (!grid.Columns.Contains(name)) continue;
+            var c = grid.Columns[name];
+            c.AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
+            c.Resizable = DataGridViewTriState.False;
+            c.DefaultCellStyle.Padding = new Padding(0);
+            c.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+            c.DefaultCellStyle.Font = new Font("Segoe UI", 9F);
+            c.DefaultCellStyle.ForeColor = AppTheme.TextOnDark;
+            c.DefaultCellStyle.SelectionForeColor = AppTheme.TextOnDark;
+            c.HeaderCell.Style.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+            c.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
+            c.MinimumWidth = c.Width;
+        }
+
+        grid.DefaultCellStyle.WrapMode = DataGridViewTriState.True;
+        grid.RowTemplate.Height = 32;
+    }
+
+    private void SetColumnFixed(string name, string header, int width, DataGridViewContentAlignment align)
+    {
+        if (!gridTransactions.Columns.Contains(name)) return;
+        var c = gridTransactions.Columns[name];
+        c.HeaderText = header;
+        c.AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
+        c.Width = width;
+        c.MinimumWidth = width;
+        c.DefaultCellStyle.Alignment = align;
+    }
+
+    private void SetColumnFill(string name, string header, int fillWeight, int minWidth, DataGridViewContentAlignment align)
+    {
+        if (!gridTransactions.Columns.Contains(name)) return;
+        var c = gridTransactions.Columns[name];
+        c.HeaderText = header;
+        c.AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill;
+        c.FillWeight = fillWeight;
+        c.MinimumWidth = minWidth;
+        c.DefaultCellStyle.Alignment = align;
     }
 
     private void GridTransactions_CellContentClick(object? sender, DataGridViewCellEventArgs e)

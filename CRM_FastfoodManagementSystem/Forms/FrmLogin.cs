@@ -1,5 +1,6 @@
 ﻿using CRM.infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
+using CRM.infrastructure;
 
 namespace CRM.winForms.Forms;
 

@@ -2,6 +2,7 @@
 using CRM.infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using System.Text.RegularExpressions;
+using CRM.infrastructure;
 
 namespace CRM.winForms.Forms;
 
