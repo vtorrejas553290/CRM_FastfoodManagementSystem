@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "CRM.winforms": {
+      "commandName": "Project",
+      "commandLineArgs": "--seedsuper"
+    }
+  }
+}

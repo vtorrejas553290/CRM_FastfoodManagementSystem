@@ -16,4 +16,19 @@ public class UserFilter
     public bool IsSuperAdmin { get; set; }
     public bool IsAdmin { get; set; }
     public int CurrentUserId { get; set; }
+
+    // ---- NEW ----
+
+    /// <summary>
+    /// Which tenant DB to query. Set from UserSession.CompanyId.
+    /// Ignored when ShowAllTenants is true.
+    /// </summary>
+    public int CompanyId { get; set; }
+
+    /// <summary>
+    /// When true (SuperAdmin), the controller loops over every active tenant
+    /// in CompanyDatabases and returns only the ADMIN user from each.
+    /// When false, the controller queries a single tenant DB via CompanyId.
+    /// </summary>
+    public bool ShowAllTenants { get; set; }
 }

@@ -33,7 +33,7 @@ public class TenantCrmDbContext : DbContext
 
     // ==================== PROMOTIONS & LOYALTY POINTS ====================
     public DbSet<Promotion> Promotions => Set<Promotion>();
-    public DbSet<PromotionCategory> PromotionCategories => Set<PromotionCategory>();   // NEW
+    public DbSet<PromotionCategory> PromotionCategories => Set<PromotionCategory>();
     public DbSet<PromotionRedemption> PromotionRedemptions => Set<PromotionRedemption>();
     public DbSet<CustomerPoint> CustomerPoints => Set<CustomerPoint>();
 
@@ -80,6 +80,12 @@ public class TenantCrmDbContext : DbContext
                 .WithMany(x => x.Users)
                 .HasForeignKey(x => x.RoleId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            // NEW — branch assignment (nullable; admins have no branch)
+            entity.HasOne(x => x.Branch)
+                .WithMany()
+                .HasForeignKey(x => x.BranchId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         // ==================== CUSTOMERS ====================
@@ -301,7 +307,6 @@ public class TenantCrmDbContext : DbContext
             entity.Property(x => x.MinimumPurchase).HasPrecision(18, 2);
             entity.HasIndex(x => x.PromotionCode).IsUnique();
 
-            // NEW — optional link to a user-defined category
             entity.HasOne(x => x.PromotionCategory)
                 .WithMany(x => x.Promotions)
                 .HasForeignKey(x => x.PromotionCategoryId)

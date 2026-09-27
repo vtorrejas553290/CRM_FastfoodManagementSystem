@@ -173,6 +173,15 @@ public partial class FrmMain : Form
                 () => ShowForm(new FrmComplaints(), "Complaints"));
         }
 
+        // ============ NEW — ADMIN — Branching (Enterprise plan, tenant end only) ============
+        if (UserSession.HasBranching
+            && UserSession.IsAdmin
+            && !UserSession.IsSuperAdmin)
+        {
+            AddMenuButton("Branches",
+                () => ShowForm(new FrmBranches(), "Branch Management"));
+        }
+
         // ============ SUPERADMIN & ADMIN — Activity Logs LAST ============
         if (UserSession.IsSuperAdmin || UserSession.IsAdmin)
         {

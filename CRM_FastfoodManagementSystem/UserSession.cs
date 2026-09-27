@@ -12,14 +12,19 @@ public static class UserSession
 
     public static string RoleName { get; set; } = string.Empty;
 
-    // ---- Tenant context (NEW) ----
+    // ---- Tenant context ----
     public static int CompanyId { get; set; }
 
     public static string CompanyCode { get; set; } = string.Empty;
 
     public static string CompanyName { get; set; } = string.Empty;
 
-    // ---- Plan feature flags (NEW) ----
+    // ---- NEW: branch context (Path Y) ----
+    public static int? BranchId { get; set; }
+
+    public static string BranchName { get; set; } = string.Empty;
+
+    // ---- Plan feature flags ----
     public static bool HasMainTransaction { get; set; }
 
     public static bool HasDataCollection { get; set; }
@@ -46,10 +51,13 @@ public static class UserSession
         RoleCode = string.Empty;
         RoleName = string.Empty;
 
-        // ---- NEW resets ----
         CompanyId = 0;
         CompanyCode = string.Empty;
         CompanyName = string.Empty;
+
+        // ---- NEW resets ----
+        BranchId = null;
+        BranchName = string.Empty;
 
         HasMainTransaction = false;
         HasDataCollection = false;

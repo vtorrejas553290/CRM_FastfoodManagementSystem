@@ -78,7 +78,7 @@ public partial class FrmLogin : Form
     }
 
     // ---------------------------------------------------------------
-    // SUPER ADMIN — lives in master DB's AspNetUsers (Identity)
+    // SUPER ADMIN — master DB AspNetUsers (Identity)
     // ---------------------------------------------------------------
     private bool TryLoginSuperAdmin(string username, string password)
     {
@@ -116,7 +116,9 @@ public partial class FrmLogin : Form
         UserSession.CompanyCode = SuperAdminCode;
         UserSession.CompanyName = "Master";
 
-        // Super Admin gets all flags — the admin panel decides what to show.
+        UserSession.BranchId = null;
+        UserSession.BranchName = string.Empty;
+
         UserSession.HasMainTransaction = true;
         UserSession.HasDataCollection = true;
         UserSession.HasBusinessIntelligence = true;
@@ -130,11 +132,10 @@ public partial class FrmLogin : Form
     }
 
     // ---------------------------------------------------------------
-    // TENANT USER — resolved through master routing, then tenant DB
+    // TENANT USER — master routing → tenant DB
     // ---------------------------------------------------------------
     private bool TryLoginTenantUser(string companyCode, string username, string password)
     {
-        // Step 1: resolve company from master DB.
         int companyId;
         string companyName;
 
@@ -154,11 +155,11 @@ public partial class FrmLogin : Form
             companyName = company.CompanyName;
         }
 
-        // Step 2: open the tenant DB via silo routing.
         using (var tenant = AppServices.CreateTenantContext(companyId))
         {
             var user = tenant.Users
                 .Include(x => x.Role)
+                .Include(x => x.Branch)      // NEW — load Branch in same query
                 .AsNoTracking()
                 .FirstOrDefault(x => x.Username == username);
 
@@ -183,9 +184,12 @@ public partial class FrmLogin : Form
             UserSession.CompanyId = companyId;
             UserSession.CompanyCode = companyCode;
             UserSession.CompanyName = companyName;
+
+            // NEW — copy branch info into session
+            UserSession.BranchId = user.BranchId;
+            UserSession.BranchName = user.Branch?.BranchName ?? string.Empty;
         }
 
-        // Step 3: load subscription plan flags from master DB.
         using (var master = AppServices.CreateMasterContext())
         {
             var sub = master.Subscriptions
@@ -209,7 +213,6 @@ public partial class FrmLogin : Form
         ActivityLogger.Log("Login", "User", UserSession.UserId,
             $"{UserSession.Username} ({UserSession.RoleCode}) logged in from {UserSession.CompanyCode}");
 
-        // Preserve existing admin Terms gate (unchanged behavior).
         if (UserSession.IsAdmin)
         {
             var pending = AppServices.GetUnacceptedSuperAdminTerms(UserSession.UserId);

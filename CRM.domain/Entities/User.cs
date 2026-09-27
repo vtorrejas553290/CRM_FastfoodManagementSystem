@@ -20,5 +20,9 @@ public class User
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
+    // ---- NEW: branch assignment (Path Y) ----
+    public int? BranchId { get; set; }
+    public Branch? Branch { get; set; }
+
     public Role? Role { get; set; }
 }

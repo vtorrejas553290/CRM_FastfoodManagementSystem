@@ -9,4 +9,8 @@ public class UserRow
     public string Role { get; set; } = "";
     public string Status { get; set; } = "";
     public DateTime CreatedAt { get; set; }
+
+    // NEW — populated only when SuperAdmin views across tenants
+    public int CompanyId { get; set; }
+    public string TenantName { get; set; } = "";
 }
