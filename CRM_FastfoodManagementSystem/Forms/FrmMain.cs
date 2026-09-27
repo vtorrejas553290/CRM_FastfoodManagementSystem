@@ -42,7 +42,8 @@ public partial class FrmMain : Form
         lblWelcome.Text = $"{UserSession.FullName}\n{UserSession.RoleName}";
         BuildMenu();
 
-        if (UserSession.IsAdmin)
+        // Initial landing page, gated by plan flag.
+        if (UserSession.IsAdmin && UserSession.HasBusinessIntelligence)
         {
             ShowForm(new FrmBusinessIntelligence(), "Business Intelligence",
                 form => HookNavigation((FrmBusinessIntelligence)form));
@@ -53,7 +54,7 @@ public partial class FrmMain : Form
             ShowForm(new FrmManagerDashboard(), "Dashboard");
             HighlightMenuButton("Dashboard");
         }
-        else if (UserSession.IsStaff)
+        else if (UserSession.IsStaff && UserSession.HasMainTransaction)
         {
             ShowForm(new FrmOrderManagement(), "Order Management");
             HighlightMenuButton("Order Management");
@@ -74,13 +75,16 @@ public partial class FrmMain : Form
             SetActiveButton(btn);
     }
 
+    // =================================================================
+    // BuildMenu — every block gated by plan flag AND role.
+    // =================================================================
     private void BuildMenu()
     {
         pnlMenu.Controls.Clear();
         _activeButton = null;
 
-        // ============ ADMIN — Business Intelligence FIRST ============
-        if (UserSession.IsAdmin)
+        // ============ ADMIN — Business Intelligence FIRST (if plan allows) ============
+        if (UserSession.IsAdmin && UserSession.HasBusinessIntelligence)
         {
             AddMenuButton("Business Intelligence",
                 () => ShowForm(new FrmBusinessIntelligence(), "Business Intelligence",
@@ -94,8 +98,9 @@ public partial class FrmMain : Form
                 () => ShowForm(new FrmManagerDashboard(), "Dashboard"));
         }
 
-        // ============ SUPERADMIN & ADMIN — Core admin modules ============
-        if (UserSession.IsSuperAdmin || UserSession.IsAdmin)
+        // ============ SUPERADMIN & ADMIN — Data-collection admin modules ============
+        if (UserSession.HasDataCollection
+            && (UserSession.IsSuperAdmin || UserSession.IsAdmin))
         {
             AddMenuButton("Terms and Conditions",
                 () => ShowForm(new FrmTermsEditor(), "Terms and Conditions"));
@@ -104,8 +109,9 @@ public partial class FrmMain : Form
                 () => ShowForm(new FrmUserManagement(), "User Management"));
         }
 
-        // ============ ADMIN & MANAGER — Operations ============
-        if (UserSession.IsAdmin || UserSession.IsManager)
+        // ============ ADMIN & MANAGER — Data-collection operations ============
+        if (UserSession.HasDataCollection
+            && (UserSession.IsAdmin || UserSession.IsManager))
         {
             AddMenuButton("Customer Feedback",
                 () => ShowForm(new FrmFeedbackList(), "Customer Feedback"));
@@ -119,10 +125,20 @@ public partial class FrmMain : Form
 
             AddMenuButton("Promotions",
                 () => ShowForm(new FrmPromotions(), "Promotions"));
+        }
 
+        // ============ ADMIN & MANAGER — Actions modules ============
+        if (UserSession.HasActions
+            && (UserSession.IsAdmin || UserSession.IsManager))
+        {
             AddMenuButton("Customer Retention",
                 () => ShowForm(new FrmCustomerRetention(), "Customer Retention"));
+        }
 
+        // ============ ADMIN & MANAGER — Main-transaction operations ============
+        if (UserSession.HasMainTransaction
+            && (UserSession.IsAdmin || UserSession.IsManager))
+        {
             AddMenuButton("Product Management",
                 () => ShowForm(new FrmProductManagement(), "Product Management"));
 
@@ -132,18 +148,20 @@ public partial class FrmMain : Form
             AddMenuButton("View Transactions",
                 () => ShowForm(new FrmViewTransactions(), "View Transactions"));
 
-            // ============ Reports ============
             AddMenuButton("Reports",
                 () => ShowForm(new FrmReports(), "Reports"));
         }
 
-        // ============ STAFF — Order Management FIRST ============
-        if (UserSession.IsStaff)
+        // ============ STAFF — Main-transaction floor operations ============
+        if (UserSession.IsStaff && UserSession.HasMainTransaction)
         {
             AddMenuButton("Order Management",
                 () => ShowForm(new FrmOrderManagement(), "Order Management"));
+        }
 
-            // Staff can register new customers but cannot edit/archive
+        // ============ STAFF — Data-collection operations ============
+        if (UserSession.IsStaff && UserSession.HasDataCollection)
+        {
             AddMenuButton("Register Customer",
                 () => ShowForm(new FrmCustomerList(canEdit: false, canRegister: true),
                     "Customer List"));
@@ -227,52 +245,64 @@ public partial class FrmMain : Form
         bi.NavigateRequested += pageKey => NavigateTo(pageKey);
     }
 
+    // =================================================================
+    // NavigateTo — same switch, but each case guarded by plan flag.
+    // =================================================================
     private void NavigateTo(string pageKey)
     {
         switch (pageKey)
         {
             case "ViewTransactions":
+                if (!UserSession.HasMainTransaction) { DenyAccess("View Transactions"); return; }
                 ShowForm(new FrmViewTransactions(), "View Transactions");
                 HighlightMenuButton("View Transactions");
                 break;
 
             case "CustomerManagement":
+                if (!UserSession.HasDataCollection) { DenyAccess("Customer Management"); return; }
                 ShowForm(new FrmCustomerList(canEdit: UserSession.IsAdmin || UserSession.IsManager),
                     "Customer Management");
                 HighlightMenuButton("Customer Management");
                 break;
 
             case "CustomerRetention":
+                if (!UserSession.HasActions) { DenyAccess("Customer Retention"); return; }
                 ShowForm(new FrmCustomerRetention(), "Customer Retention");
                 HighlightMenuButton("Customer Retention");
                 break;
 
             case "CustomerFeedback":
+                if (!UserSession.HasDataCollection) { DenyAccess("Customer Feedback"); return; }
                 ShowForm(new FrmFeedbackList(), "Customer Feedback");
                 HighlightMenuButton("Customer Feedback");
                 break;
 
             case "Complaints":
+                if (!UserSession.HasDataCollection) { DenyAccess("Complaints"); return; }
                 ShowForm(new FrmComplaints(), "Complaints");
                 HighlightMenuButton("Complaints");
                 break;
 
             case "InventoryManagement":
+                if (!UserSession.HasMainTransaction) { DenyAccess("Inventory Management"); return; }
                 ShowForm(new FrmInventoryManagement(), "Inventory Management");
                 HighlightMenuButton("Inventory Management");
                 break;
 
             case "ProductManagement":
+                if (!UserSession.HasMainTransaction) { DenyAccess("Product Management"); return; }
                 ShowForm(new FrmProductManagement(), "Product Management");
                 HighlightMenuButton("Product Management");
                 break;
 
             case "Promotions":
+                if (!UserSession.HasDataCollection) { DenyAccess("Promotions"); return; }
                 ShowForm(new FrmPromotions(), "Promotions");
                 HighlightMenuButton("Promotions");
                 break;
 
             case "Reports":
+                if (!UserSession.HasMainTransaction) { DenyAccess("Reports"); return; }
                 ShowForm(new FrmReports(), "Reports");
                 HighlightMenuButton("Reports");
                 break;
@@ -282,6 +312,15 @@ public partial class FrmMain : Form
                     "Navigation", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 break;
         }
+    }
+
+    private void DenyAccess(string featureName)
+    {
+        MessageBox.Show(
+            $"'{featureName}' is not available on your current subscription plan.",
+            "Not Available",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Information);
     }
 
     private void ShowDashboard()

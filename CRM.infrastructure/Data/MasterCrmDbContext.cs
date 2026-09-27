@@ -15,6 +15,10 @@ public class MasterCrmDbContext : IdentityDbContext
 
     public DbSet<CompanyDatabase> CompanyDatabases => Set<CompanyDatabase>();
 
+    public DbSet<Plan> Plans => Set<Plan>();
+
+    public DbSet<Subscription> Subscriptions => Set<Subscription>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -55,6 +59,41 @@ public class MasterCrmDbContext : IdentityDbContext
             entity.Property(x => x.CredentialKey)
                 .HasMaxLength(100)
                 .IsRequired();
+        });
+
+        // ---------- NEW ----------
+
+        builder.Entity<Plan>(entity =>
+        {
+            entity.HasKey(x => x.PlanId);
+
+            entity.Property(x => x.PlanCode)
+                .HasMaxLength(50)
+                .IsRequired();
+
+            entity.Property(x => x.PlanName)
+                .HasMaxLength(100)
+                .IsRequired();
+
+            entity.HasIndex(x => x.PlanCode)
+                .IsUnique();
+        });
+
+        builder.Entity<Subscription>(entity =>
+        {
+            entity.HasKey(x => x.SubscriptionId);
+
+            entity.HasOne(x => x.Company)
+                .WithMany()
+                .HasForeignKey(x => x.CompanyId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(x => x.Plan)
+                .WithMany(p => p.Subscriptions)
+                .HasForeignKey(x => x.PlanId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasIndex(x => new { x.CompanyId, x.IsActive });
         });
     }
 }

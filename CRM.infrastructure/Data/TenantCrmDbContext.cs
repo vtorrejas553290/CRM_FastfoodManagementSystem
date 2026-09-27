@@ -46,6 +46,9 @@ public class TenantCrmDbContext : DbContext
     // ==================== COMPLAINTS ====================
     public DbSet<Complaint> Complaints => Set<Complaint>();
 
+    // ==================== BRANCHES ====================
+    public DbSet<Branch> Branches => Set<Branch>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -465,6 +468,30 @@ public class TenantCrmDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(x => x.AssignedToUserId)
                 .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // ==================== BRANCHES ====================
+
+        builder.Entity<Branch>(entity =>
+        {
+            entity.HasKey(x => x.BranchId);
+
+            entity.Property(x => x.BranchCode)
+                .HasMaxLength(50)
+                .IsRequired();
+
+            entity.Property(x => x.BranchName)
+                .HasMaxLength(200)
+                .IsRequired();
+
+            entity.Property(x => x.Address)
+                .HasMaxLength(500);
+
+            entity.Property(x => x.ContactNumber)
+                .HasMaxLength(50);
+
+            entity.HasIndex(x => x.BranchCode)
+                .IsUnique();
         });
     }
 }

@@ -69,7 +69,7 @@ namespace CRM.infrastructure.Migrations.TenantCrmDb
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("ActivityLogs");
+                    b.ToTable("ActivityLogs", (string)null);
                 });
 
             modelBuilder.Entity("CRM.domain.Entities.Category", b =>
@@ -105,7 +105,7 @@ namespace CRM.infrastructure.Migrations.TenantCrmDb
                     b.HasIndex("CategoryCode")
                         .IsUnique();
 
-                    b.ToTable("Categories");
+                    b.ToTable("Categories", (string)null);
                 });
 
             modelBuilder.Entity("CRM.domain.Entities.Complaint", b =>
@@ -189,7 +189,7 @@ namespace CRM.infrastructure.Migrations.TenantCrmDb
 
                     b.HasIndex("Status");
 
-                    b.ToTable("Complaints");
+                    b.ToTable("Complaints", (string)null);
                 });
 
             modelBuilder.Entity("CRM.domain.Entities.Customer", b =>
@@ -253,7 +253,7 @@ namespace CRM.infrastructure.Migrations.TenantCrmDb
                     b.HasIndex("CustomerCode")
                         .IsUnique();
 
-                    b.ToTable("Customers");
+                    b.ToTable("Customers", (string)null);
                 });
 
             modelBuilder.Entity("CRM.domain.Entities.CustomerFeedback", b =>
@@ -289,7 +289,7 @@ namespace CRM.infrastructure.Migrations.TenantCrmDb
 
                     b.HasIndex("CustomerId");
 
-                    b.ToTable("CustomerFeedbacks");
+                    b.ToTable("CustomerFeedbacks", (string)null);
                 });
 
             modelBuilder.Entity("CRM.domain.Entities.CustomerPoint", b =>
@@ -331,7 +331,7 @@ namespace CRM.infrastructure.Migrations.TenantCrmDb
 
                     b.HasIndex("PerformedAt");
 
-                    b.ToTable("CustomerPoints");
+                    b.ToTable("CustomerPoints", (string)null);
                 });
 
             modelBuilder.Entity("CRM.domain.Entities.Inventory", b =>
@@ -361,7 +361,7 @@ namespace CRM.infrastructure.Migrations.TenantCrmDb
                     b.HasIndex("ProductId")
                         .IsUnique();
 
-                    b.ToTable("Inventories");
+                    b.ToTable("Inventories", (string)null);
                 });
 
             modelBuilder.Entity("CRM.domain.Entities.Order", b =>
@@ -421,7 +421,7 @@ namespace CRM.infrastructure.Migrations.TenantCrmDb
                     b.HasIndex("OrderCode")
                         .IsUnique();
 
-                    b.ToTable("Orders");
+                    b.ToTable("Orders", (string)null);
                 });
 
             modelBuilder.Entity("CRM.domain.Entities.OrderItem", b =>
@@ -455,7 +455,7 @@ namespace CRM.infrastructure.Migrations.TenantCrmDb
 
                     b.HasIndex("ProductId");
 
-                    b.ToTable("OrderItems");
+                    b.ToTable("OrderItems", (string)null);
                 });
 
             modelBuilder.Entity("CRM.domain.Entities.Product", b =>
@@ -496,7 +496,7 @@ namespace CRM.infrastructure.Migrations.TenantCrmDb
                     b.HasIndex("ProductCode")
                         .IsUnique();
 
-                    b.ToTable("Products");
+                    b.ToTable("Products", (string)null);
                 });
 
             modelBuilder.Entity("CRM.domain.Entities.Promotion", b =>
@@ -551,7 +551,7 @@ namespace CRM.infrastructure.Migrations.TenantCrmDb
                     b.HasIndex("PromotionCode")
                         .IsUnique();
 
-                    b.ToTable("Promotions");
+                    b.ToTable("Promotions", (string)null);
                 });
 
             modelBuilder.Entity("CRM.domain.Entities.PromotionRedemption", b =>
@@ -586,7 +586,7 @@ namespace CRM.infrastructure.Migrations.TenantCrmDb
 
                     b.HasIndex("PromotionId");
 
-                    b.ToTable("PromotionRedemptions");
+                    b.ToTable("PromotionRedemptions", (string)null);
                 });
 
             modelBuilder.Entity("CRM.domain.Entities.RetentionOffer", b =>
@@ -635,7 +635,7 @@ namespace CRM.infrastructure.Migrations.TenantCrmDb
 
                     b.HasIndex("Status");
 
-                    b.ToTable("RetentionOffers");
+                    b.ToTable("RetentionOffers", (string)null);
                 });
 
             modelBuilder.Entity("CRM.domain.Entities.Role", b =>
@@ -671,7 +671,7 @@ namespace CRM.infrastructure.Migrations.TenantCrmDb
                     b.HasIndex("RoleCode")
                         .IsUnique();
 
-                    b.ToTable("Roles");
+                    b.ToTable("Roles", (string)null);
                 });
 
             modelBuilder.Entity("CRM.domain.Entities.TermsAcceptance", b =>
@@ -701,7 +701,7 @@ namespace CRM.infrastructure.Migrations.TenantCrmDb
 
                     b.HasIndex("TermsAndConditionId");
 
-                    b.ToTable("TermsAcceptances");
+                    b.ToTable("TermsAcceptances", (string)null);
                 });
 
             modelBuilder.Entity("CRM.domain.Entities.TermsAndCondition", b =>
@@ -751,7 +751,7 @@ namespace CRM.infrastructure.Migrations.TenantCrmDb
                     b.HasIndex("CreatedByRoleCode", "Version")
                         .IsUnique();
 
-                    b.ToTable("TermsAndConditions");
+                    b.ToTable("TermsAndConditions", (string)null);
                 });
 
             modelBuilder.Entity("CRM.domain.Entities.Transaction", b =>
@@ -790,7 +790,7 @@ namespace CRM.infrastructure.Migrations.TenantCrmDb
                     b.HasIndex("OrderId")
                         .IsUnique();
 
-                    b.ToTable("Transactions");
+                    b.ToTable("Transactions", (string)null);
                 });
 
             modelBuilder.Entity("CRM.domain.Entities.User", b =>
@@ -840,7 +840,7 @@ namespace CRM.infrastructure.Migrations.TenantCrmDb
                     b.HasIndex("Username")
                         .IsUnique();
 
-                    b.ToTable("Users");
+                    b.ToTable("Users", (string)null);
                 });
 
             modelBuilder.Entity("CRM.domain.Entities.UserTermsAcceptance", b =>
@@ -871,7 +871,7 @@ namespace CRM.infrastructure.Migrations.TenantCrmDb
                     b.HasIndex("UserId", "TermsAndConditionId")
                         .IsUnique();
 
-                    b.ToTable("UserTermsAcceptances");
+                    b.ToTable("UserTermsAcceptances", (string)null);
                 });
 
             modelBuilder.Entity("CRM.domain.Entities.ActivityLog", b =>
