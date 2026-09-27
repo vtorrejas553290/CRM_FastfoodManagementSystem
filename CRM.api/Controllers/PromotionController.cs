@@ -16,9 +16,10 @@ public class PromotionController : IPromotionController
         var showInactive = filter.ShowInactive;
         var now = filter.Now;
 
-        var query = db.Promotions.AsNoTracking();
+        var query = db.Promotions
+            .Include(x => x.PromotionCategory)
+            .AsNoTracking();
 
-        // Show only the relevant set: archived when toggled, active otherwise
         if (showInactive)
             query = query.Where(x => !x.IsActive);
         else
@@ -36,6 +37,9 @@ public class PromotionController : IPromotionController
                 PromotionId = x.PromotionId,
                 PromotionCode = x.PromotionCode,
                 PromotionName = x.PromotionName,
+                Category = x.PromotionCategory != null
+                    ? x.PromotionCategory.CategoryName
+                    : "—",
                 Discount = x.DiscountType == "Percent"
                     ? $"{x.DiscountValue:N0}%"
                     : $"₱{x.DiscountValue:N2}",

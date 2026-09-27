@@ -15,6 +15,7 @@ public partial class FrmPromotionEditor : Form
     private NumericUpDown _numValue = new();
     private NumericUpDown _numMin = new();
     private CheckBox _chkMin = new();
+    private ComboBox _cmbCategory = new();                 // NEW
     private DateTimePicker _dtpStart = new();
     private DateTimePicker _dtpEnd = new();
     private CheckBox _chkActive = new();
@@ -33,7 +34,7 @@ public partial class FrmPromotionEditor : Form
     {
         AppTheme.ApplyForm(this, isDialog: true);
         Text = _promotionId is null ? "Add Promotion" : "Edit Promotion";
-        ClientSize = new Size(560, 560);
+        ClientSize = new Size(560, 620);
 
         int y = 20;
         AddLabeledTextBox("Promotion Code:", ref y, out _txtCode);
@@ -46,6 +47,20 @@ public partial class FrmPromotionEditor : Form
         AppTheme.StyleInput(_txtDesc);
         Controls.Add(lblDesc); Controls.Add(_txtDesc);
         y += 75;
+
+        // Category  (NEW)
+        var lblCategory = new Label { Text = "Category:", Location = new Point(20, y), AutoSize = true };
+        AppTheme.StyleLabel(lblCategory);
+        _cmbCategory = new ComboBox
+        {
+            Location = new Point(170, y - 2),
+            Width = 360,
+            DropDownStyle = ComboBoxStyle.DropDownList
+        };
+        AppTheme.StyleInput(_cmbCategory);
+        Controls.Add(lblCategory);
+        Controls.Add(_cmbCategory);
+        y += 40;
 
         // Discount Type + Value
         var lblType = new Label { Text = "Discount Type:", Location = new Point(20, y), AutoSize = true };
@@ -130,6 +145,8 @@ public partial class FrmPromotionEditor : Form
         _dtpStart.Value = DateTime.Today;
         _dtpEnd.Value = DateTime.Today.AddDays(30);
 
+        LoadCategories();
+
         if (_promotionId is null) return;
 
         using var db = AppServices.CreateTenantContext();
@@ -143,6 +160,11 @@ public partial class FrmPromotionEditor : Form
         _cmbType.SelectedItem = promo.DiscountType;
         _numValue.Value = promo.DiscountValue;
 
+        if (promo.PromotionCategoryId.HasValue)
+            _cmbCategory.SelectedValue = promo.PromotionCategoryId.Value;
+        else
+            _cmbCategory.SelectedIndex = 0;
+
         if (promo.MinimumPurchase.HasValue)
         {
             _chkMin.Checked = true;
@@ -153,6 +175,29 @@ public partial class FrmPromotionEditor : Form
         _dtpStart.Value = promo.StartDate;
         _dtpEnd.Value = promo.EndDate;
         _chkActive.Checked = promo.IsActive;
+    }
+
+    private void LoadCategories()
+    {
+        using var db = AppServices.CreateTenantContext();
+
+        var cats = db.PromotionCategories
+            .AsNoTracking()
+            .Where(c => c.IsActive)
+            .OrderBy(c => c.CategoryName)
+            .Select(c => new { c.PromotionCategoryId, c.CategoryName })
+            .ToList();
+
+        var items = new List<object>
+        {
+            new { PromotionCategoryId = 0, CategoryName = "(none)" }
+        };
+        items.AddRange(cats);
+
+        _cmbCategory.DataSource = items;
+        _cmbCategory.DisplayMember = "CategoryName";
+        _cmbCategory.ValueMember = "PromotionCategoryId";
+        _cmbCategory.SelectedIndex = 0;
     }
 
     private void BtnSave_Click(object? sender, EventArgs e)
@@ -176,6 +221,11 @@ public partial class FrmPromotionEditor : Form
         if (_dtpEnd.Value.Date < _dtpStart.Value.Date)
         { _lblStatus.Text = "End Date must be on or after Start Date."; return; }
 
+        // Resolve category (0 = (none))
+        int? categoryId = null;
+        if (_cmbCategory.SelectedValue is int cid && cid > 0)
+            categoryId = cid;
+
         try
         {
             using var db = AppServices.CreateTenantContext();
@@ -194,6 +244,7 @@ public partial class FrmPromotionEditor : Form
                     DiscountType = type,
                     DiscountValue = _numValue.Value,
                     MinimumPurchase = _chkMin.Checked ? _numMin.Value : null,
+                    PromotionCategoryId = categoryId,
                     StartDate = _dtpStart.Value.Date,
                     EndDate = _dtpEnd.Value.Date,
                     IsActive = _chkActive.Checked,
@@ -215,6 +266,7 @@ public partial class FrmPromotionEditor : Form
                 promo.DiscountType = type;
                 promo.DiscountValue = _numValue.Value;
                 promo.MinimumPurchase = _chkMin.Checked ? _numMin.Value : null;
+                promo.PromotionCategoryId = categoryId;
                 promo.StartDate = _dtpStart.Value.Date;
                 promo.EndDate = _dtpEnd.Value.Date;
                 promo.IsActive = _chkActive.Checked;

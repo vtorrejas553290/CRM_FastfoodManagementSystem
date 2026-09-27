@@ -1,4 +1,6 @@
 ﻿using CRM.domain.Entities;
+using CRM.domain.Entities;
+using CRM.domain.Models;
 using Microsoft.EntityFrameworkCore;
 using CRM.infrastructure;
 
@@ -6,8 +8,6 @@ namespace CRM.winForms.Forms;
 
 public partial class FrmOrderManagement : Form
 {
-    private const int PointsToPesoDivisor = 100;
-
     private readonly List<OrderItem> _cart = new();
     private List<Product> _allProducts = new();
 
@@ -16,6 +16,8 @@ public partial class FrmOrderManagement : Form
 
     private int _customerPointsBalance = 0;
     private int _redeemedPoints = 0;
+
+    private int? _suggestedPromotionId = null;   // NEW
 
     public FrmOrderManagement()
     {
@@ -29,7 +31,12 @@ public partial class FrmOrderManagement : Form
         btnRedeemPoints.Click += (_, __) => ApplyPointsRedemption();
         btnClearPoints.Click += (_, __) => ClearPointsRedemption();
 
-        cmbCustomer.SelectedIndexChanged += (_, __) => RefreshCustomerPoints();
+        // CHANGED — refresh points AND suggest an outreach promotion
+        cmbCustomer.SelectedIndexChanged += (_, __) =>
+        {
+            RefreshCustomerPoints();
+            SuggestOutreachPromotion();
+        };
 
         cmbCustomer.TextChanged += (_, __) =>
         {
@@ -237,7 +244,7 @@ public partial class FrmOrderManagement : Form
         var customer = db.Customers.AsNoTracking().FirstOrDefault(x => x.CustomerId == customerId);
         _customerPointsBalance = customer?.CurrentPoints ?? 0;
 
-        lblPointsBalance.Text = $"Loyalty Points: {_customerPointsBalance:N0}  (= ₱{_customerPointsBalance / (decimal)PointsToPesoDivisor:N2})";
+        lblPointsBalance.Text = $"Loyalty Points: {_customerPointsBalance:N0}  (= ₱{LoyaltyConfig.PesosForPoints(_customerPointsBalance):N2})";
 
         _redeemedPoints = 0;
         numRedeemPoints.Value = 0;
@@ -269,7 +276,7 @@ public partial class FrmOrderManagement : Form
         }
 
         decimal cartTotal = _cart.Sum(x => x.LineTotal);
-        decimal pointsDiscount = requested / (decimal)PointsToPesoDivisor;
+        decimal pointsDiscount = LoyaltyConfig.PesosForPoints(requested);
         decimal maxUsableDiscount = cartTotal - _appliedDiscount;
 
         if (pointsDiscount > maxUsableDiscount)
@@ -300,6 +307,103 @@ public partial class FrmOrderManagement : Form
     //  PROMOTIONS
     // ============================================================
 
+    private void SuggestOutreachPromotion()
+    {
+        _suggestedPromotionId = null;
+        lblPromoSuggestion.Visible = false;
+        lblPromoSuggestion.Text = "";
+
+        if (cmbCustomer.SelectedValue is not int customerId || customerId == 0)
+            return;
+
+        using var db = AppServices.CreateTenantContext();
+        var now = DateTime.UtcNow;
+
+        // ============================================================
+        //  1) Win-back offer — outreach promo sent to this customer
+        //     Promo must be in a category whose name contains "Win"
+        // ============================================================
+        var outreachCandidate = (
+            from o in db.CustomerOutreaches.AsNoTracking()
+            join p in db.Promotions.AsNoTracking()
+                on o.PromotionId equals p.PromotionId
+            join c in db.PromotionCategories.AsNoTracking()
+                on p.PromotionCategoryId equals c.PromotionCategoryId
+            where o.CustomerId == customerId
+               && o.PromotionId != null
+               && p.IsActive
+               && p.StartDate <= now
+               && p.EndDate >= now
+               && c.IsActive
+               && (c.CategoryName.Contains("Win") || c.CategoryName.Contains("win"))
+               && !db.PromotionRedemptions
+                      .Any(rd => rd.PromotionId == p.PromotionId
+                              && rd.CustomerId == customerId)
+            orderby o.SentAt descending
+            select new { p.PromotionId, p.PromotionCode, o.SentAt }
+        ).FirstOrDefault();
+
+        if (outreachCandidate is not null)
+        {
+            cmbPromotion.SelectedValue = outreachCandidate.PromotionId;
+            _suggestedPromotionId = outreachCandidate.PromotionId;
+
+            lblPromoSuggestion.Text =
+                $"✓ This customer is eligible for promo '{outreachCandidate.PromotionCode}' " +
+                $"(sent {outreachCandidate.SentAt:yyyy-MM-dd}). Press Apply to use it.";
+            lblPromoSuggestion.Visible = true;
+
+            lblStatus.ForeColor = AppTheme.Success;
+            lblStatus.Text =
+                $"Suggested promotion '{outreachCandidate.PromotionCode}' — sent to this customer on " +
+                $"{outreachCandidate.SentAt:yyyy-MM-dd}. Press Apply to use it.";
+            return;
+        }
+
+        // ============================================================
+        //  2) New-customer offer — no paid orders yet
+        //     Promo must be in a category whose name contains "New"
+        // ============================================================
+        bool hasPaidOrders = db.Orders
+            .AsNoTracking()
+            .Any(o => o.CustomerId == customerId && o.Status == "Paid");
+
+        if (hasPaidOrders)
+            return;
+
+        var newcomerPromo = (
+            from p in db.Promotions.AsNoTracking()
+            join c in db.PromotionCategories.AsNoTracking()
+                on p.PromotionCategoryId equals c.PromotionCategoryId
+            where p.IsActive
+               && p.StartDate <= now
+               && p.EndDate >= now
+               && c.IsActive
+               && (c.CategoryName.Contains("New") || c.CategoryName.Contains("new"))
+               && !db.PromotionRedemptions
+                      .Any(rd => rd.PromotionId == p.PromotionId
+                              && rd.CustomerId == customerId)
+            orderby p.PromotionCode
+            select new { p.PromotionId, p.PromotionCode }
+        ).FirstOrDefault();
+
+        if (newcomerPromo is null)
+            return;
+
+        cmbPromotion.SelectedValue = newcomerPromo.PromotionId;
+        _suggestedPromotionId = newcomerPromo.PromotionId;
+
+        lblPromoSuggestion.Text =
+            $"✓ New customer — eligible for welcome promo '{newcomerPromo.PromotionCode}'. " +
+            "Press Apply to use it.";
+        lblPromoSuggestion.Visible = true;
+
+        lblStatus.ForeColor = AppTheme.Success;
+        lblStatus.Text =
+            $"Suggested new-customer promotion '{newcomerPromo.PromotionCode}'. " +
+            "Press Apply to use it.";
+    }
+
     private void ApplyPromotion()
     {
         if (cmbPromotion.SelectedValue is not int promoId || promoId == 0)
@@ -310,7 +414,41 @@ public partial class FrmOrderManagement : Form
             return;
         }
 
+        // A promo can only be applied to a real, selected customer.
+        if (cmbCustomer.SelectedValue is not int customerId || customerId == 0)
+        {
+            MessageBox.Show(
+                "Please select a customer before applying a promotion.",
+                "No customer selected",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning);
+
+            if (cmbPromotion.Items.Count > 0) cmbPromotion.SelectedIndex = 0;
+            return;
+        }
+
         using var db = AppServices.CreateTenantContext();
+
+        // Block if this customer has already used this promotion.
+        bool alreadyRedeemed = db.PromotionRedemptions
+            .AsNoTracking()
+            .Any(r => r.PromotionId == promoId && r.CustomerId == customerId);
+
+        if (alreadyRedeemed)
+        {
+            MessageBox.Show(
+                "This customer has already used this promotion and cannot use it again.",
+                "Promotion already used",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning);
+
+            if (cmbPromotion.Items.Count > 0) cmbPromotion.SelectedIndex = 0;
+            _appliedPromotionId = null;
+            _appliedDiscount = 0m;
+            UpdateTotals();
+            return;
+        }
+
         var promo = db.Promotions.AsNoTracking().FirstOrDefault(x => x.PromotionId == promoId);
         if (promo is null) return;
 
@@ -651,7 +789,7 @@ public partial class FrmOrderManagement : Form
     private void UpdateTotals()
     {
         decimal subTotal = _cart.Sum(x => x.LineTotal);
-        decimal pointsDiscount = _redeemedPoints / (decimal)PointsToPesoDivisor;
+        decimal pointsDiscount = LoyaltyConfig.PesosForPoints(_redeemedPoints);
         decimal totalDiscount = _appliedDiscount + pointsDiscount;
         decimal total = subTotal - totalDiscount;
 
@@ -685,7 +823,7 @@ public partial class FrmOrderManagement : Form
     private void UpdateChange()
     {
         decimal subTotal = _cart.Sum(x => x.LineTotal);
-        decimal pointsDiscount = _redeemedPoints / (decimal)PointsToPesoDivisor;
+        decimal pointsDiscount = LoyaltyConfig.PesosForPoints(_redeemedPoints);
         decimal total = subTotal - _appliedDiscount - pointsDiscount;
         if (total < 0) total = 0;
 
@@ -714,6 +852,9 @@ public partial class FrmOrderManagement : Form
         _appliedDiscount = 0m;
         _appliedPromotionId = null;
         _redeemedPoints = 0;
+        _suggestedPromotionId = null;
+        lblPromoSuggestion.Visible = false;
+        lblPromoSuggestion.Text = "";
         numRedeemPoints.Value = 0;
         numAmountPaid.Value = 0;
         txtReference.Clear();
@@ -750,7 +891,7 @@ public partial class FrmOrderManagement : Form
         }
 
         decimal subTotal = _cart.Sum(x => x.LineTotal);
-        decimal pointsDiscount = _redeemedPoints / (decimal)PointsToPesoDivisor;
+        decimal pointsDiscount = LoyaltyConfig.PesosForPoints(_redeemedPoints);
         decimal totalDiscount = _appliedDiscount + pointsDiscount;
         decimal total = subTotal - totalDiscount;
         if (total < 0) total = 0;
@@ -770,7 +911,7 @@ public partial class FrmOrderManagement : Form
             return;
         }
 
-        int pointsEarned = (int)Math.Floor(total);
+        int pointsEarned = LoyaltyConfig.PointsEarnedFor(total);
 
         string customerName = cmbCustomer.Text;
         string orderType = cmbOrderType.SelectedItem?.ToString() ?? "DineIn";
@@ -905,7 +1046,6 @@ public partial class FrmOrderManagement : Form
                     $"Earned {pointsEarned} points on {order.OrderCode}");
             }
 
-            // Show the receipt dialog before resetting the form.
             var receiptItems = _cart
                 .Select(x => new OrderItem
                 {

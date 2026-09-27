@@ -38,6 +38,7 @@
         private System.Windows.Forms.Label lblTotalLabel;
         private System.Windows.Forms.Label lblTotal;
 
+        private System.Windows.Forms.Label lblPromoSuggestion;   // NEW
         private System.Windows.Forms.Label lblPromotion;
         private System.Windows.Forms.ComboBox cmbPromotion;
         private System.Windows.Forms.Button btnApplyPromo;
@@ -100,6 +101,7 @@
             this.lblTotalLabel = new System.Windows.Forms.Label();
             this.lblTotal = new System.Windows.Forms.Label();
 
+            this.lblPromoSuggestion = new System.Windows.Forms.Label();
             this.lblPromotion = new System.Windows.Forms.Label();
             this.cmbPromotion = new System.Windows.Forms.ComboBox();
             this.btnApplyPromo = new System.Windows.Forms.Button();
@@ -146,10 +148,7 @@
             this.Text = "Order Management";
 
             // ============================================================
-            // HEADER — TableLayoutPanel
-            //   Col 0 (fill) : title + subtitle
-            //   Col 1 (420)  : customer picker
-            //   Col 2 (180)  : order type
+            // HEADER
             // ============================================================
             this.pnlHeader.Dock = System.Windows.Forms.DockStyle.Top;
             this.pnlHeader.Height = 108;
@@ -167,7 +166,6 @@
             tblHeader.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 180F));
             tblHeader.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
 
-            // ---- Col 0: title block ----
             var flowTitle = new System.Windows.Forms.FlowLayoutPanel();
             flowTitle.Dock = System.Windows.Forms.DockStyle.Fill;
             flowTitle.FlowDirection = System.Windows.Forms.FlowDirection.TopDown;
@@ -190,7 +188,6 @@
             flowTitle.Controls.Add(this.lblHeaderTitle);
             flowTitle.Controls.Add(this.lblHeaderSubtitle);
 
-            // ---- Col 1: customer picker ----
             var flowCustomer = new System.Windows.Forms.FlowLayoutPanel();
             flowCustomer.Dock = System.Windows.Forms.DockStyle.Fill;
             flowCustomer.FlowDirection = System.Windows.Forms.FlowDirection.TopDown;
@@ -214,7 +211,6 @@
             flowCustomer.Controls.Add(this.lblCustomer);
             flowCustomer.Controls.Add(this.cmbCustomer);
 
-            // ---- Col 2: order type ----
             var flowOrderType = new System.Windows.Forms.FlowLayoutPanel();
             flowOrderType.Dock = System.Windows.Forms.DockStyle.Fill;
             flowOrderType.FlowDirection = System.Windows.Forms.FlowDirection.TopDown;
@@ -243,7 +239,7 @@
             this.pnlHeader.Controls.Add(tblHeader);
 
             // ============================================================
-            // CART (right side)
+            // CART
             // ============================================================
             this.pnlCart.Dock = System.Windows.Forms.DockStyle.Right;
             this.pnlCart.Width = 540;
@@ -287,7 +283,7 @@
             // CART FOOTER
             // ============================================================
             this.pnlCartFooter.Dock = System.Windows.Forms.DockStyle.Bottom;
-            this.pnlCartFooter.Height = 570;
+            this.pnlCartFooter.Height = 592;
             this.pnlCartFooter.BackColor = System.Drawing.Color.White;
 
             this.lblSubTotal.AutoSize = true;
@@ -320,80 +316,92 @@
             div1.Location = new System.Drawing.Point(0, 108);
             div1.Size = new System.Drawing.Size(460, 1);
 
+            // ---- Promo eligibility banner (hidden until populated) ----
+            this.lblPromoSuggestion.AutoSize = false;
+            this.lblPromoSuggestion.Location = new System.Drawing.Point(0, 116);
+            this.lblPromoSuggestion.Size = new System.Drawing.Size(460, 22);
+            this.lblPromoSuggestion.Font = new System.Drawing.Font("Segoe UI", 8.5F, System.Drawing.FontStyle.Bold);
+            this.lblPromoSuggestion.ForeColor = System.Drawing.Color.FromArgb(22, 130, 60);
+            this.lblPromoSuggestion.BackColor = System.Drawing.Color.FromArgb(235, 250, 240);
+            this.lblPromoSuggestion.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            this.lblPromoSuggestion.Padding = new System.Windows.Forms.Padding(8, 0, 8, 0);
+            this.lblPromoSuggestion.Text = "";
+            this.lblPromoSuggestion.Visible = false;
+
             this.lblPromotion.AutoSize = true;
             this.lblPromotion.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
             this.lblPromotion.ForeColor = System.Drawing.Color.FromArgb(90, 100, 115);
-            this.lblPromotion.Location = new System.Drawing.Point(0, 122);
+            this.lblPromotion.Location = new System.Drawing.Point(0, 144);
             this.lblPromotion.Text = "PROMOTION";
 
             this.cmbPromotion.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.cmbPromotion.FlatStyle = System.Windows.Forms.FlatStyle.Standard;
-            this.cmbPromotion.Location = new System.Drawing.Point(0, 144);
+            this.cmbPromotion.Location = new System.Drawing.Point(0, 166);
             this.cmbPromotion.Size = new System.Drawing.Size(280, 29);
 
-            this.btnApplyPromo.Location = new System.Drawing.Point(290, 143);
+            this.btnApplyPromo.Location = new System.Drawing.Point(290, 165);
             this.btnApplyPromo.Size = new System.Drawing.Size(80, 31);
             this.btnApplyPromo.Text = "Apply";
             this.btnApplyPromo.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnApplyPromo.FlatAppearance.BorderSize = 0;
 
-            this.btnClearPromo.Location = new System.Drawing.Point(376, 143);
+            this.btnClearPromo.Location = new System.Drawing.Point(376, 165);
             this.btnClearPromo.Size = new System.Drawing.Size(80, 31);
             this.btnClearPromo.Text = "Clear";
             this.btnClearPromo.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
 
             var div2 = new System.Windows.Forms.Panel();
             div2.BackColor = System.Drawing.Color.FromArgb(230, 234, 240);
-            div2.Location = new System.Drawing.Point(0, 188);
+            div2.Location = new System.Drawing.Point(0, 210);
             div2.Size = new System.Drawing.Size(460, 1);
 
             this.lblPointsBalance.AutoSize = true;
             this.lblPointsBalance.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
             this.lblPointsBalance.ForeColor = System.Drawing.Color.FromArgb(30, 150, 90);
-            this.lblPointsBalance.Location = new System.Drawing.Point(0, 202);
+            this.lblPointsBalance.Location = new System.Drawing.Point(0, 224);
             this.lblPointsBalance.Text = "Loyalty Points: —";
 
             this.lblRedeemPoints.AutoSize = true;
             this.lblRedeemPoints.Font = new System.Drawing.Font("Segoe UI", 8F);
             this.lblRedeemPoints.ForeColor = System.Drawing.Color.FromArgb(100, 110, 125);
-            this.lblRedeemPoints.Location = new System.Drawing.Point(0, 228);
+            this.lblRedeemPoints.Location = new System.Drawing.Point(0, 250);
             this.lblRedeemPoints.Text = "Redeem Points";
 
-            this.numRedeemPoints.Location = new System.Drawing.Point(0, 248);
+            this.numRedeemPoints.Location = new System.Drawing.Point(0, 270);
             this.numRedeemPoints.Size = new System.Drawing.Size(110, 29);
             this.numRedeemPoints.Maximum = 1000000;
             this.numRedeemPoints.DecimalPlaces = 0;
 
-            this.btnRedeemPoints.Location = new System.Drawing.Point(120, 247);
+            this.btnRedeemPoints.Location = new System.Drawing.Point(120, 269);
             this.btnRedeemPoints.Size = new System.Drawing.Size(70, 31);
             this.btnRedeemPoints.Text = "Use";
             this.btnRedeemPoints.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
             this.btnRedeemPoints.FlatAppearance.BorderSize = 0;
 
-            this.btnClearPoints.Location = new System.Drawing.Point(200, 247);
+            this.btnClearPoints.Location = new System.Drawing.Point(200, 269);
             this.btnClearPoints.Size = new System.Drawing.Size(70, 31);
             this.btnClearPoints.Text = "Clear";
             this.btnClearPoints.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
 
             var div3 = new System.Windows.Forms.Panel();
             div3.BackColor = System.Drawing.Color.FromArgb(230, 234, 240);
-            div3.Location = new System.Drawing.Point(0, 292);
+            div3.Location = new System.Drawing.Point(0, 314);
             div3.Size = new System.Drawing.Size(460, 1);
 
             this.lblPaymentSection.AutoSize = true;
             this.lblPaymentSection.Font = new System.Drawing.Font("Segoe UI", 10.5F, System.Drawing.FontStyle.Bold);
             this.lblPaymentSection.ForeColor = System.Drawing.Color.FromArgb(25, 35, 50);
-            this.lblPaymentSection.Location = new System.Drawing.Point(0, 304);
+            this.lblPaymentSection.Location = new System.Drawing.Point(0, 326);
             this.lblPaymentSection.Text = "Payment";
 
             this.lblAmountPaid.AutoSize = true;
             this.lblAmountPaid.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
             this.lblAmountPaid.ForeColor = System.Drawing.Color.FromArgb(90, 100, 115);
-            this.lblAmountPaid.Location = new System.Drawing.Point(0, 336);
+            this.lblAmountPaid.Location = new System.Drawing.Point(0, 358);
             this.lblAmountPaid.Text = "AMOUNT PAID";
 
             this.numAmountPaid.DecimalPlaces = 2;
-            this.numAmountPaid.Location = new System.Drawing.Point(0, 356);
+            this.numAmountPaid.Location = new System.Drawing.Point(0, 378);
             this.numAmountPaid.Size = new System.Drawing.Size(460, 34);
             this.numAmountPaid.Maximum = new decimal(new int[] { 1000000, 0, 0, 0 });
             this.numAmountPaid.ThousandsSeparator = true;
@@ -402,36 +410,36 @@
             this.lblPaymentMethod.AutoSize = true;
             this.lblPaymentMethod.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
             this.lblPaymentMethod.ForeColor = System.Drawing.Color.FromArgb(90, 100, 115);
-            this.lblPaymentMethod.Location = new System.Drawing.Point(0, 400);
+            this.lblPaymentMethod.Location = new System.Drawing.Point(0, 422);
             this.lblPaymentMethod.Text = "PAYMENT METHOD";
 
             this.cmbPaymentMethod.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.cmbPaymentMethod.FlatStyle = System.Windows.Forms.FlatStyle.Standard;
-            this.cmbPaymentMethod.Location = new System.Drawing.Point(0, 420);
+            this.cmbPaymentMethod.Location = new System.Drawing.Point(0, 442);
             this.cmbPaymentMethod.Size = new System.Drawing.Size(225, 29);
 
             this.lblReference.AutoSize = true;
             this.lblReference.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
             this.lblReference.ForeColor = System.Drawing.Color.FromArgb(90, 100, 115);
-            this.lblReference.Location = new System.Drawing.Point(235, 400);
+            this.lblReference.Location = new System.Drawing.Point(235, 422);
             this.lblReference.Text = "GCASH REFERENCE";
 
-            this.txtReference.Location = new System.Drawing.Point(235, 420);
+            this.txtReference.Location = new System.Drawing.Point(235, 442);
             this.txtReference.Size = new System.Drawing.Size(225, 29);
 
             this.lblChangeLabel.AutoSize = true;
             this.lblChangeLabel.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
             this.lblChangeLabel.ForeColor = System.Drawing.Color.FromArgb(90, 100, 115);
-            this.lblChangeLabel.Location = new System.Drawing.Point(0, 462);
+            this.lblChangeLabel.Location = new System.Drawing.Point(0, 484);
             this.lblChangeLabel.Text = "CHANGE";
 
             this.lblChange.AutoSize = true;
             this.lblChange.Font = new System.Drawing.Font("Segoe UI", 15F, System.Drawing.FontStyle.Bold);
             this.lblChange.ForeColor = System.Drawing.Color.FromArgb(30, 150, 90);
-            this.lblChange.Location = new System.Drawing.Point(340, 458);
+            this.lblChange.Location = new System.Drawing.Point(340, 480);
             this.lblChange.Text = "₱0.00";
 
-            this.btnPay.Location = new System.Drawing.Point(0, 492);
+            this.btnPay.Location = new System.Drawing.Point(0, 514);
             this.btnPay.Size = new System.Drawing.Size(460, 48);
             this.btnPay.Text = "PAY ORDER";
             this.btnPay.Font = new System.Drawing.Font("Segoe UI", 11F, System.Drawing.FontStyle.Bold);
@@ -439,7 +447,7 @@
             this.btnPay.FlatAppearance.BorderSize = 0;
 
             this.lblStatus.AutoSize = false;
-            this.lblStatus.Location = new System.Drawing.Point(0, 548);
+            this.lblStatus.Location = new System.Drawing.Point(0, 566);
             this.lblStatus.Size = new System.Drawing.Size(460, 20);
             this.lblStatus.Font = new System.Drawing.Font("Segoe UI", 8.5F);
             this.lblStatus.ForeColor = System.Drawing.Color.FromArgb(110, 120, 135);
@@ -449,6 +457,7 @@
             this.pnlCartFooter.Controls.Add(this.lblTotalLabel);
             this.pnlCartFooter.Controls.Add(this.lblTotal);
             this.pnlCartFooter.Controls.Add(div1);
+            this.pnlCartFooter.Controls.Add(this.lblPromoSuggestion);
             this.pnlCartFooter.Controls.Add(this.lblPromotion);
             this.pnlCartFooter.Controls.Add(this.cmbPromotion);
             this.pnlCartFooter.Controls.Add(this.btnApplyPromo);
@@ -477,7 +486,7 @@
             this.pnlCart.Controls.Add(this.pnlCartHeader);
 
             // ============================================================
-            // CATALOG (left side)
+            // CATALOG
             // ============================================================
             this.pnlCatalog.Dock = System.Windows.Forms.DockStyle.Fill;
             this.pnlCatalog.BackColor = System.Drawing.Color.FromArgb(245, 247, 250);

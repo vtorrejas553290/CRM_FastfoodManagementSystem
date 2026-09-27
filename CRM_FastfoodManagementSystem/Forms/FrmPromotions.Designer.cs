@@ -10,12 +10,12 @@
         private System.Windows.Forms.TextBox txtSearch;
         private System.Windows.Forms.CheckBox chkShowArchived;
         private System.Windows.Forms.FlowLayoutPanel flowButtons;
+        private System.Windows.Forms.Button btnManageCategories;
         private System.Windows.Forms.Button btnAddPromotion;
         private System.Windows.Forms.Label lblStatus;
         private System.Windows.Forms.Panel pnlGridWrap;
         private System.Windows.Forms.DataGridView gridPromotions;
 
-        // Pagination bar (bottom)
         private System.Windows.Forms.Panel pnlPager;
         private System.Windows.Forms.TableLayoutPanel tblPager;
         private System.Windows.Forms.FlowLayoutPanel flowPageSize;
@@ -44,6 +44,7 @@
             this.txtSearch = new System.Windows.Forms.TextBox();
             this.chkShowArchived = new System.Windows.Forms.CheckBox();
             this.flowButtons = new System.Windows.Forms.FlowLayoutPanel();
+            this.btnManageCategories = new System.Windows.Forms.Button();
             this.btnAddPromotion = new System.Windows.Forms.Button();
             this.lblStatus = new System.Windows.Forms.Label();
             this.gridPromotions = new System.Windows.Forms.DataGridView();
@@ -74,17 +75,11 @@
             ((System.ComponentModel.ISupportInitialize)(this.gridPromotions)).BeginInit();
             this.SuspendLayout();
 
-            // ============================================================
-            // pnlTop
-            // ============================================================
             this.pnlTop.Dock = System.Windows.Forms.DockStyle.Top;
             this.pnlTop.Height = 108;
             this.pnlTop.BackColor = System.Drawing.Color.White;
             this.pnlTop.Padding = new System.Windows.Forms.Padding(16, 14, 16, 8);
 
-            // tblHeader — 2 columns × 2 rows
-            //   Row 0: Search | (right: Add Promotion)
-            //   Row 1: Show inactive
             this.tblHeader.Dock = System.Windows.Forms.DockStyle.Top;
             this.tblHeader.Height = 74;
             this.tblHeader.ColumnCount = 2;
@@ -102,7 +97,6 @@
             this.tblHeader.RowStyles.Add(
                 new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 30F));
 
-            // ---- Row 0, col 0: flowSearch ----
             this.flowSearch.AutoSize = true;
             this.flowSearch.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
             this.flowSearch.FlowDirection = System.Windows.Forms.FlowDirection.LeftToRight;
@@ -117,13 +111,11 @@
 
             this.flowSearch.Controls.Add(this.txtSearch);
 
-            // ---- Row 1, col 0: chkShowArchived ----
             this.chkShowArchived.AutoSize = true;
             this.chkShowArchived.Margin = new System.Windows.Forms.Padding(0, 6, 0, 0);
             this.chkShowArchived.Text = "Show inactive";
             this.chkShowArchived.UseVisualStyleBackColor = true;
 
-            // ---- Row 0, col 1: flowButtons (right-aligned) ----
             this.flowButtons.AutoSize = true;
             this.flowButtons.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
             this.flowButtons.FlowDirection = System.Windows.Forms.FlowDirection.LeftToRight;
@@ -132,11 +124,17 @@
             this.flowButtons.Margin = new System.Windows.Forms.Padding(0);
             this.flowButtons.Padding = new System.Windows.Forms.Padding(0);
 
+            this.btnManageCategories.Width = 180;
+            this.btnManageCategories.Height = 32;
+            this.btnManageCategories.Margin = new System.Windows.Forms.Padding(0, 0, 8, 0);
+            this.btnManageCategories.Text = "Manage Categories";
+
             this.btnAddPromotion.Width = 160;
             this.btnAddPromotion.Height = 32;
             this.btnAddPromotion.Margin = new System.Windows.Forms.Padding(0);
             this.btnAddPromotion.Text = "Add Promotion";
 
+            this.flowButtons.Controls.Add(this.btnManageCategories);
             this.flowButtons.Controls.Add(this.btnAddPromotion);
 
             this.tblHeader.Controls.Add(this.flowSearch, 0, 0);
@@ -146,30 +144,18 @@
 
             this.pnlTop.Controls.Add(this.tblHeader);
 
-            // ============================================================
-            // lblStatus
-            // ============================================================
             this.lblStatus.Dock = System.Windows.Forms.DockStyle.Bottom;
             this.lblStatus.Height = 32;
             this.lblStatus.Padding = new System.Windows.Forms.Padding(16, 0, 0, 0);
             this.lblStatus.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
 
-            // ============================================================
-            // gridPromotions
-            // ============================================================
             this.gridPromotions.Dock = System.Windows.Forms.DockStyle.Fill;
 
-            // ============================================================
-            // pnlGridWrap
-            // ============================================================
             this.pnlGridWrap.Dock = System.Windows.Forms.DockStyle.Fill;
             this.pnlGridWrap.Padding = new System.Windows.Forms.Padding(16);
             this.pnlGridWrap.BackColor = System.Drawing.Color.FromArgb(248, 249, 250);
             this.pnlGridWrap.Controls.Add(this.gridPromotions);
 
-            // ============================================================
-            // pnlPager
-            // ============================================================
             this.pnlPager.Dock = System.Windows.Forms.DockStyle.Bottom;
             this.pnlPager.Height = 52;
             this.pnlPager.BackColor = System.Drawing.Color.White;
@@ -282,9 +268,6 @@
 
             this.pnlPager.Controls.Add(this.tblPager);
 
-            // ============================================================
-            // FrmPromotions
-            // ============================================================
             this.ClientSize = new System.Drawing.Size(1150, 690);
             this.Controls.Add(this.pnlGridWrap);
             this.Controls.Add(this.pnlPager);

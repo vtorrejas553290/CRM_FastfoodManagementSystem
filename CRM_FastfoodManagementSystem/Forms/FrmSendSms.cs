@@ -6,39 +6,37 @@ using CRM.infrastructure.Data;
 
 namespace CRM.winForms.Forms;
 
-public partial class FrmSendEmail : Form
+public partial class FrmSendSms : Form
 {
     private readonly int _customerId;
     private readonly string _customerName;
     private readonly string _customerCode;
-    private readonly string _email;
+    private readonly string _phone;
 
     private List<OutreachPromotion> _promotions = new();
-    private string _initialBody = "";
 
-    public FrmSendEmail(
+    public FrmSendSms(
         int customerId,
         string customerName,
         string customerCode,
-        string email,
+        string phone,
         string initialBody = "")
     {
         _customerId = customerId;
         _customerName = customerName;
         _customerCode = customerCode;
-        _email = email;
-        _initialBody = initialBody ?? "";
+        _phone = phone;
 
         InitializeComponent();
         ApplyTheme();
 
         Load += (_, __) => FitToScreen();
-        Load += FrmSendEmail_Load;
+        Load += FrmSendSms_Load;
 
         cmbPromotion.SelectedIndexChanged += (_, __) => UpdatePreview();
         txtTemplate.TextChanged += (_, __) => UpdatePreview();
 
-        btnOpenInMail.Click += (_, __) => DoSend();
+        btnSend.Click += (_, __) => DoSend();
         btnCancel.Click += (_, __) =>
         {
             DialogResult = DialogResult.Cancel;
@@ -80,28 +78,23 @@ public partial class FrmSendEmail : Form
 
         foreach (var lbl in new[]
         {
-            lblToLabel, lblSubjectLabel,
-            lblPromotion, lblTemplate, lblPreview
+            lblToLabel, lblPromotion, lblTemplate, lblPreview, lblHint
         })
             AppTheme.StyleLabel(lbl);
 
         lblTo.ForeColor = AppTheme.TextPrimary;
 
         AppTheme.StyleInput(cmbPromotion);
-        AppTheme.StyleInput(txtSubject);
         AppTheme.StyleInput(txtTemplate);
         AppTheme.StyleInput(txtPreview);
 
-        AppTheme.StyleSuccessButton(btnOpenInMail);
+        AppTheme.StyleSuccessButton(btnSend);
         AppTheme.StyleNeutralButton(btnCancel);
     }
 
-    private void FrmSendEmail_Load(object? sender, EventArgs e)
+    private void FrmSendSms_Load(object? sender, EventArgs e)
     {
-        lblTo.Text = $"{_customerName} <{_email}>";
-
-        // Subject default
-        txtSubject.Text = $"A special offer from Fastfood MS, {_customerName}!";
+        lblTo.Text = $"{_customerName} <{_phone}>";
 
         using var db = AppServices.CreateTenantContext();
         var now = DateTime.UtcNow;
@@ -134,7 +127,7 @@ public partial class FrmSendEmail : Form
         cmbPromotion.ValueMember = "PromotionId";
         cmbPromotion.SelectedIndex = 0;
 
-        // Seed template
+        // Seed the template: caller's prefilled text if any, otherwise the default.
         txtTemplate.Text = string.IsNullOrWhiteSpace(_initialBody)
             ? DefaultTemplate()
             : _initialBody;
@@ -142,14 +135,13 @@ public partial class FrmSendEmail : Form
         UpdatePreview();
     }
 
+    private string _initialBody = "";
+
     private string DefaultTemplate()
     {
-        return "Hi {CustomerName},\r\n\r\n" +
-               "We miss you! It's been a while since your last visit, " +
-               "and we'd love to see you again.\r\n\r\n" +
+        return "Hi {CustomerName}! We miss you at CRM FastFood. " +
                "Use code {PromoCode} for {DiscountDisplay} off your next order. " +
-               "Valid until {EndDate}. {MinPurchase}\r\n\r\n" +
-               "See you soon!\r\nFastfood MS";
+               "Valid until {EndDate}. {MinPurchase}";
     }
 
     private OutreachPromotion? GetSelectedPromotion()
@@ -197,38 +189,44 @@ public partial class FrmSendEmail : Form
 
     private void DoSend()
     {
-        var subject = txtSubject.Text.Trim();
-        var body = txtPreview.Text?.Trim() ?? "";
+        var message = txtPreview.Text?.Trim() ?? "";
 
-        if (string.IsNullOrWhiteSpace(subject) &&
-            string.IsNullOrWhiteSpace(body))
+        if (string.IsNullOrWhiteSpace(message))
         {
-            MessageBox.Show("Please enter a subject or a message before sending.",
-                "Empty email", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            MessageBox.Show("Please enter a message.", "Missing message",
+                MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            txtTemplate.Focus();
             return;
+        }
+
+        if (message.Length > 480)
+        {
+            var confirm = MessageBox.Show(
+                $"Your message is {message.Length} characters and may be split " +
+                "into multiple SMS. Continue?",
+                "Long message",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question);
+
+            if (confirm != DialogResult.Yes) return;
         }
 
         try
         {
-            string encodedSubject = Uri.EscapeDataString(subject);
-            string encodedBody = Uri.EscapeDataString(body);
-            string mailto = $"mailto:{_email}?subject={encodedSubject}&body={encodedBody}";
-
+            var body = Uri.EscapeDataString(message);
             Process.Start(new ProcessStartInfo
             {
-                FileName = mailto,
+                FileName = $"sms:{_phone}?body={body}",
                 UseShellExecute = true
             });
-
-            ActivityLogger.Log("Email", "Customer", _customerId,
-                $"Opened email compose for '{_customerName}' <{_email}> | Subject: {subject}");
 
             DialogResult = DialogResult.OK;
             Close();
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Could not open mail client:\n{ex.Message}",
+            MessageBox.Show(
+                $"Could not open SMS composer:\n{ex.Message}",
                 "Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
         }
     }

@@ -33,11 +33,15 @@ public class TenantCrmDbContext : DbContext
 
     // ==================== PROMOTIONS & LOYALTY POINTS ====================
     public DbSet<Promotion> Promotions => Set<Promotion>();
+    public DbSet<PromotionCategory> PromotionCategories => Set<PromotionCategory>();   // NEW
     public DbSet<PromotionRedemption> PromotionRedemptions => Set<PromotionRedemption>();
     public DbSet<CustomerPoint> CustomerPoints => Set<CustomerPoint>();
 
     // ==================== RETENTION OFFERS ====================
     public DbSet<RetentionOffer> RetentionOffers => Set<RetentionOffer>();
+
+    // ==================== OUTREACH ====================
+    public DbSet<CustomerOutreach> CustomerOutreaches => Set<CustomerOutreach>();
 
     // ==================== COMPLAINTS ====================
     public DbSet<Complaint> Complaints => Set<Complaint>();
@@ -293,6 +297,22 @@ public class TenantCrmDbContext : DbContext
             entity.Property(x => x.DiscountValue).HasPrecision(18, 2);
             entity.Property(x => x.MinimumPurchase).HasPrecision(18, 2);
             entity.HasIndex(x => x.PromotionCode).IsUnique();
+
+            // NEW — optional link to a user-defined category
+            entity.HasOne(x => x.PromotionCategory)
+                .WithMany(x => x.Promotions)
+                .HasForeignKey(x => x.PromotionCategoryId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // ==================== PROMOTION CATEGORIES ====================
+
+        builder.Entity<PromotionCategory>(entity =>
+        {
+            entity.HasKey(x => x.PromotionCategoryId);
+            entity.Property(x => x.CategoryName).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.Description).HasMaxLength(500);
+            entity.HasIndex(x => x.CategoryName).IsUnique();
         });
 
         builder.Entity<PromotionRedemption>(entity =>
@@ -362,6 +382,29 @@ public class TenantCrmDbContext : DbContext
             entity.HasOne(x => x.CreatedByUser)
                 .WithMany()
                 .HasForeignKey(x => x.CreatedByUserId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // ==================== CUSTOMER OUTREACH ====================
+
+        builder.Entity<CustomerOutreach>(entity =>
+        {
+            entity.HasKey(x => x.CustomerOutreachId);
+            entity.Property(x => x.Channel).HasMaxLength(20).IsRequired();
+            entity.Property(x => x.MessageBody).HasColumnType("nvarchar(max)");
+
+            entity.HasIndex(x => x.CustomerId);
+            entity.HasIndex(x => x.PromotionId);
+            entity.HasIndex(x => x.SentAt);
+
+            entity.HasOne(x => x.Customer)
+                .WithMany()
+                .HasForeignKey(x => x.CustomerId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(x => x.Promotion)
+                .WithMany()
+                .HasForeignKey(x => x.PromotionId)
                 .OnDelete(DeleteBehavior.SetNull);
         });
 

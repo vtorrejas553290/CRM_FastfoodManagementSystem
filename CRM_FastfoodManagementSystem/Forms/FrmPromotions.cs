@@ -29,6 +29,7 @@ public partial class FrmPromotions : Form
         };
 
         btnAddPromotion.Click += BtnAddPromotion_Click;
+        btnManageCategories.Click += (_, __) => OpenManageCategories();
         chkShowArchived.CheckedChanged += (_, __) =>
         {
             _currentPage = 1;
@@ -60,6 +61,7 @@ public partial class FrmPromotions : Form
 
         AppTheme.StyleInput(txtSearch);
         AppTheme.StyleSuccessButton(btnAddPromotion);
+        AppTheme.StyleSecondaryButton(btnManageCategories);
         AppTheme.StyleLabel(lblStatus);
         AppTheme.StyleGrid(gridPromotions);
 
@@ -213,6 +215,7 @@ public partial class FrmPromotions : Form
         if (grid.Columns.Contains("PromotionId")) grid.Columns["PromotionId"].Visible = false;
 
         SetColumnFixed("PromotionCode", "Code", 120, DataGridViewContentAlignment.MiddleLeft);
+        SetColumnFixed("Category", "Category", 140, DataGridViewContentAlignment.MiddleLeft);
         SetColumnFixed("Discount", "Discount", 110, DataGridViewContentAlignment.MiddleCenter);
         SetColumnFixed("MinPurchase", "Min Purchase", 130, DataGridViewContentAlignment.MiddleRight);
         SetColumnFixed("Validity", "Validity", 200, DataGridViewContentAlignment.MiddleCenter);
@@ -303,6 +306,13 @@ public partial class FrmPromotions : Form
         var cell = gridPromotions.Rows[rowIndex].Cells["PromotionId"];
         if (cell?.Value is null) return null;
         return Convert.ToInt32(cell.Value);
+    }
+
+    private void OpenManageCategories()
+    {
+        using var dlg = new FrmPromotionCategories();
+        dlg.ShowDialog(this);
+        LoadPromotions();
     }
 
     private void BtnAddPromotion_Click(object? sender, EventArgs e)

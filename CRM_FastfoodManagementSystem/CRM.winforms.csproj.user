@@ -13,6 +13,9 @@
     <Compile Update="Forms\FrmAdminTermsGate.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Update="Forms\FrmBulkContact.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Update="Forms\FrmBusinessIntelligence.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -79,6 +82,12 @@
     <Compile Update="Forms\FrmProductManagement.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Update="Forms\FrmPromotionCategories.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Forms\FrmPromotionCategoryEditor.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Update="Forms\FrmPromotionEditor.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -95,6 +104,9 @@
       <SubType>Form</SubType>
     </Compile>
     <Compile Update="Forms\FrmSendEmail.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Forms\FrmSendSms.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Update="Forms\FrmTermsEditor.cs">

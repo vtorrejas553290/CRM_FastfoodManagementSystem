@@ -21,9 +21,8 @@ public partial class FrmCustomerRetention : Form
         ApplyTheme();
 
         AppTheme.RegisterButtonColumnStyles(gridCustomers,
-            ("colHistory", "primary"),
-            ("colAdjust", "warning"),
-            ("colContact", "success"));
+            ("colContact", "success"),
+            ("colHistory", "primary"));
 
         Load += (_, __) =>
         {
@@ -31,6 +30,8 @@ public partial class FrmCustomerRetention : Form
             InitPager();
             LoadCustomers();
         };
+
+        btnBulkContact.Click += BtnBulkContact_Click;
 
         txtSearch.TextChanged += (_, __) =>
         {
@@ -64,13 +65,16 @@ public partial class FrmCustomerRetention : Form
 
         AppTheme.StyleInput(txtSearch);
         AppTheme.StyleInput(cmbStatusFilter);
+        AppTheme.StyleLabel(lblStatusFilter);
 
         AppTheme.StyleLabel(lblStatus);
         AppTheme.StyleGrid(gridCustomers);
-        AppTheme.StyleLabel(lblStatusFilter);
+
+        AppTheme.StyleSuccessButton(btnBulkContact);
 
         lblPointsInfo.Font = new Font("Segoe UI", 9.5F, FontStyle.Italic);
         lblPointsInfo.ForeColor = AppTheme.TextSecondary;
+        lblPointsInfo.Text = $"Loyalty: {LoyaltyConfig.RateDescription}";
 
         AppTheme.StyleLabel(lblPageSize);
         AppTheme.StyleLabel(lblPageInfo);
@@ -87,7 +91,7 @@ public partial class FrmCustomerRetention : Form
         cmbStatusFilter.Items.Clear();
         cmbStatusFilter.Items.AddRange(new object[]
         {
-            "All", "Active", "At Risk", "Dormant", "Never"
+            "All", "Active", "At Risk", "Dormant"
         });
         cmbStatusFilter.SelectedIndex = 0;
     }
@@ -98,10 +102,6 @@ public partial class FrmCustomerRetention : Form
         cmbPageSize.Items.AddRange(new object[] { "10", "25", "50", "100", "All" });
         cmbPageSize.SelectedIndex = 1;
     }
-
-    // ============================================================
-    //  DATA LOAD
-    // ============================================================
 
     private void LoadCustomers()
     {
@@ -123,14 +123,13 @@ public partial class FrmCustomerRetention : Form
             int active = _allRows.Count(r => r.Retention == "Active");
             int atRisk = _allRows.Count(r => r.Retention == "At Risk");
             int dormant = _allRows.Count(r => r.Retention == "Dormant");
-            int never = _allRows.Count(r => r.Retention == "Never");
             int totalPoints = _allRows.Sum(r => r.CurrentPoints);
 
             lblStatus.ForeColor = AppTheme.TextSecondary;
             lblStatus.Text =
                 $"{_allRows.Count} customer(s) — " +
-                $"✅ {active} active · ⚠️ {atRisk} at risk · 🚨 {dormant} dormant · ⚪ {never} never — " +
-                $"{totalPoints:N0} points in circulation (₱{totalPoints / 100m:N2})";
+                $"✅ {active} active · ⚠️ {atRisk} at risk · 🚨 {dormant} dormant — " +
+                $"{totalPoints:N0} points in circulation (₱{LoyaltyConfig.PesosForPoints(totalPoints):N2})";
         }
         catch (Exception ex)
         {
@@ -215,7 +214,7 @@ public partial class FrmCustomerRetention : Form
     }
 
     // ============================================================
-    //  ACTION COLUMNS — History + Adjust + Contact
+    //  ACTION COLUMNS — Contact + History
     // ============================================================
 
     private void BuildActionColumns()
@@ -223,28 +222,18 @@ public partial class FrmCustomerRetention : Form
         for (int i = gridCustomers.Columns.Count - 1; i >= 0; i--)
         {
             var col = gridCustomers.Columns[i];
-            if (col.Name == "colHistory" ||
-                col.Name == "colAdjust" ||
-                col.Name == "colContact" ||
-                col.Name == "colFollowUp" ||
-                col.Name == "colSendOffer")
-            {
+            if (col.Name == "colContact" || col.Name == "colHistory")
                 gridCustomers.Columns.RemoveAt(i);
-            }
         }
 
         gridCustomers.Columns.Add(AppTheme.CreateGridButtonColumn(
-            "colHistory", "History", "View History", "primary", 110));
+            "colContact", "Contact", "Contact", "success", 110));
 
         gridCustomers.Columns.Add(AppTheme.CreateGridButtonColumn(
-            "colAdjust", "Adjust", "Adjust Points", "warning", 110));
+            "colHistory", "History", "View History", "primary", 140));
 
-        gridCustomers.Columns.Add(AppTheme.CreateGridButtonColumn(
-            "colContact", "Contact", "Contact Customer", "success", 110));
-
-        AppTheme.ApplyStyleToButtonColumn(gridCustomers, "colHistory", "primary");
-        AppTheme.ApplyStyleToButtonColumn(gridCustomers, "colAdjust", "warning");
         AppTheme.ApplyStyleToButtonColumn(gridCustomers, "colContact", "success");
+        AppTheme.ApplyStyleToButtonColumn(gridCustomers, "colHistory", "primary");
 
         gridCustomers.CellContentClick -= GridCustomers_CellContentClick;
         gridCustomers.CellContentClick += GridCustomers_CellContentClick;
@@ -258,13 +247,8 @@ public partial class FrmCustomerRetention : Form
     {
         var grid = gridCustomers;
 
-        // Wrap long cell content so the two-word action captions
-        // ("View History", "Adjust Points", "Contact Customer") render
-        // on two lines. Use a FIXED row height instead of
-        // AutoSizeRowsMode = AllCells — auto-measure on every paint is
-        // the single biggest cause of grid lag on this form.
-        grid.DefaultCellStyle.WrapMode = DataGridViewTriState.True;
-        grid.RowTemplate.Height = 48;
+        grid.DefaultCellStyle.WrapMode = DataGridViewTriState.False;
+        grid.RowTemplate.Height = 32;
 
         if (grid.Columns.Contains("CustomerId"))
             grid.Columns["CustomerId"].Visible = false;
@@ -363,33 +347,42 @@ public partial class FrmCustomerRetention : Form
             c.DefaultCellStyle.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
         }
 
-        ApplyActionColumnLayout(grid, "colHistory", 110);
-        ApplyActionColumnLayout(grid, "colAdjust", 110);
-        ApplyActionColumnLayout(grid, "colContact", 110);
+        // Contact action column
+        if (grid.Columns.Contains("colContact"))
+        {
+            var c = grid.Columns["colContact"];
+            c.AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
+            c.Resizable = DataGridViewTriState.False;
+            c.Width = 110;
+            c.MinimumWidth = 110;
+            c.DefaultCellStyle.Padding = new Padding(0);
+            c.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+            c.DefaultCellStyle.Font = new Font("Segoe UI", 9F);
+            c.DefaultCellStyle.ForeColor = AppTheme.TextOnDark;
+            c.DefaultCellStyle.SelectionForeColor = AppTheme.TextOnDark;
+            c.HeaderCell.Style.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+            c.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
+        }
+
+        // History action column
+        if (grid.Columns.Contains("colHistory"))
+        {
+            var c = grid.Columns["colHistory"];
+            c.AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
+            c.Resizable = DataGridViewTriState.False;
+            c.Width = 140;
+            c.MinimumWidth = 140;
+            c.DefaultCellStyle.Padding = new Padding(0);
+            c.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+            c.DefaultCellStyle.Font = new Font("Segoe UI", 9F);
+            c.DefaultCellStyle.ForeColor = AppTheme.TextOnDark;
+            c.DefaultCellStyle.SelectionForeColor = AppTheme.TextOnDark;
+            c.HeaderCell.Style.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+            c.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
+        }
 
         grid.CellFormatting -= Grid_CellFormatting;
         grid.CellFormatting += Grid_CellFormatting;
-    }
-
-    private static void ApplyActionColumnLayout(DataGridView grid, string columnName, int width)
-    {
-        if (!grid.Columns.Contains(columnName)) return;
-
-        var c = grid.Columns[columnName];
-        c.AutoSizeMode = DataGridViewAutoSizeColumnMode.None;
-        c.Resizable = DataGridViewTriState.False;
-        c.Width = width;
-        c.MinimumWidth = width;
-
-        c.DefaultCellStyle.Padding = new Padding(0);
-        c.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
-        c.DefaultCellStyle.Font = new Font("Segoe UI", 9.5F, FontStyle.Regular);
-
-        c.DefaultCellStyle.ForeColor = AppTheme.TextOnDark;
-        c.DefaultCellStyle.SelectionForeColor = AppTheme.TextOnDark;
-
-        c.HeaderCell.Style.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
-        c.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
     }
 
     private void Grid_CellFormatting(object? sender, DataGridViewCellFormattingEventArgs e)
@@ -406,7 +399,6 @@ public partial class FrmCustomerRetention : Form
             "Active" => Color.FromArgb(22, 130, 60),
             "At Risk" => Color.FromArgb(200, 130, 0),
             "Dormant" => Color.FromArgb(190, 40, 40),
-            "Never" => Color.FromArgb(120, 120, 120),
             _ => AppTheme.TextPrimary
         };
 
@@ -427,10 +419,8 @@ public partial class FrmCustomerRetention : Form
 
         if (column.Name == "colHistory")
             ShowHistory(e.RowIndex);
-        else if (column.Name == "colAdjust")
-            AdjustPointsForRow(e.RowIndex);
         else if (column.Name == "colContact")
-            OpenContact(e.RowIndex);
+            ShowContact(e.RowIndex);
     }
 
     private int? GetCustomerIdAtRow(int rowIndex)
@@ -453,29 +443,45 @@ public partial class FrmCustomerRetention : Form
         dlg.ShowDialog(this);
     }
 
-    private void AdjustPointsForRow(int rowIndex)
-    {
-        var id = GetCustomerIdAtRow(rowIndex);
-        if (id is null) return;
-
-        using var dlg = new FrmAdjustPoints(id.Value);
-        if (dlg.ShowDialog(this) == DialogResult.OK)
-        {
-            ActivityLogger.Log("Points", "Customer", id.Value, "Points adjusted");
-            LoadCustomers();
-        }
-    }
-
-    private void OpenContact(int rowIndex)
+    private void ShowContact(int rowIndex)
     {
         var id = GetCustomerIdAtRow(rowIndex);
         if (id is null) return;
 
         using var dlg = new FrmContactCustomer(id.Value);
         if (dlg.ShowDialog(this) == DialogResult.OK)
+            LoadCustomers();
+    }
+
+    private void BtnBulkContact_Click(object? sender, EventArgs e)
+    {
+        if (_allRows.Count == 0)
         {
-            // Contact dialog logs everything internally.
-            // No grid reload needed unless customer data changed.
+            MessageBox.Show(
+                "No customers to contact. Adjust the search first.",
+                "Nothing to send",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
+            return;
+        }
+
+        var recipients = _allRows
+            .Select(r => new ContactRecipient
+            {
+                CustomerId = r.CustomerId,
+                CustomerCode = r.CustomerCode,
+                CustomerName = r.CustomerName,
+                ContactNumber = r.ContactNumber ?? "",
+                EmailAddress = r.EmailAddress ?? "",
+                Retention = r.Retention,
+                Selected = true
+            })
+            .ToList();
+
+        using var dlg = new FrmBulkContact(recipients);
+        if (dlg.ShowDialog(this) == DialogResult.OK)
+        {
+            LoadCustomers();
         }
     }
 }

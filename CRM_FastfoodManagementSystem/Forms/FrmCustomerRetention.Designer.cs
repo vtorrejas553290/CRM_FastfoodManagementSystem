@@ -11,6 +11,8 @@
         private System.Windows.Forms.FlowLayoutPanel flowStatus;
         private System.Windows.Forms.Label lblStatusFilter;
         private System.Windows.Forms.ComboBox cmbStatusFilter;
+        private System.Windows.Forms.FlowLayoutPanel flowHeaderActions;
+        private System.Windows.Forms.Button btnBulkContact;
         private System.Windows.Forms.Label lblPointsInfo;
         private System.Windows.Forms.Label lblStatus;
         private System.Windows.Forms.DataGridView gridCustomers;
@@ -46,6 +48,8 @@
             this.flowStatus = new System.Windows.Forms.FlowLayoutPanel();
             this.lblStatusFilter = new System.Windows.Forms.Label();
             this.cmbStatusFilter = new System.Windows.Forms.ComboBox();
+            this.flowHeaderActions = new System.Windows.Forms.FlowLayoutPanel();
+            this.btnBulkContact = new System.Windows.Forms.Button();
             this.lblPointsInfo = new System.Windows.Forms.Label();
             this.lblStatus = new System.Windows.Forms.Label();
             this.gridCustomers = new System.Windows.Forms.DataGridView();
@@ -68,6 +72,7 @@
             this.tblHeader.SuspendLayout();
             this.flowSearch.SuspendLayout();
             this.flowStatus.SuspendLayout();
+            this.flowHeaderActions.SuspendLayout();
             this.pnlGridWrap.SuspendLayout();
             this.pnlPager.SuspendLayout();
             this.tblPager.SuspendLayout();
@@ -84,12 +89,12 @@
             this.pnlTop.BackColor = System.Drawing.Color.White;
             this.pnlTop.Padding = new System.Windows.Forms.Padding(16, 14, 16, 8);
 
-            // tblHeader — 2 columns × 2 rows
-            //   Row 0: Search | Status
-            //   Row 1: Loyalty caption
+            // tblHeader — 4 columns × 2 rows
+            //   Row 0: Search | Status | (spacer) | Bulk Contact
+            //   Row 1: Loyalty caption (spans all four columns)
             this.tblHeader.Dock = System.Windows.Forms.DockStyle.Top;
             this.tblHeader.Height = 74;
-            this.tblHeader.ColumnCount = 2;
+            this.tblHeader.ColumnCount = 4;
             this.tblHeader.RowCount = 2;
             this.tblHeader.Padding = new System.Windows.Forms.Padding(0);
             this.tblHeader.Margin = new System.Windows.Forms.Padding(0);
@@ -97,7 +102,11 @@
             this.tblHeader.ColumnStyles.Add(
                 new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.AutoSize));
             this.tblHeader.ColumnStyles.Add(
+                new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.AutoSize));
+            this.tblHeader.ColumnStyles.Add(
                 new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 100F));
+            this.tblHeader.ColumnStyles.Add(
+                new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 200F));
 
             this.tblHeader.RowStyles.Add(
                 new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 40F));
@@ -113,7 +122,7 @@
             this.flowSearch.Margin = new System.Windows.Forms.Padding(0, 0, 16, 0);
             this.flowSearch.Padding = new System.Windows.Forms.Padding(0);
 
-            this.txtSearch.Width = 420;
+            this.txtSearch.Width = 380;
             this.txtSearch.Margin = new System.Windows.Forms.Padding(0);
             this.txtSearch.PlaceholderText = "Search by customer code or name...";
 
@@ -125,7 +134,7 @@
             this.flowStatus.FlowDirection = System.Windows.Forms.FlowDirection.LeftToRight;
             this.flowStatus.WrapContents = false;
             this.flowStatus.Anchor = System.Windows.Forms.AnchorStyles.Left;
-            this.flowStatus.Margin = new System.Windows.Forms.Padding(0);
+            this.flowStatus.Margin = new System.Windows.Forms.Padding(0, 0, 16, 0);
             this.flowStatus.Padding = new System.Windows.Forms.Padding(0);
 
             this.lblStatusFilter.AutoSize = true;
@@ -134,25 +143,44 @@
             this.lblStatusFilter.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
 
             this.cmbStatusFilter.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-            this.cmbStatusFilter.Width = 150;
+            this.cmbStatusFilter.Width = 140;
             this.cmbStatusFilter.Margin = new System.Windows.Forms.Padding(0);
 
             this.flowStatus.Controls.Add(this.lblStatusFilter);
             this.flowStatus.Controls.Add(this.cmbStatusFilter);
 
-            // ---- Row 1, col 0–1 (span): lblPointsInfo ----
+            // ---- Row 0, col 3: flowHeaderActions ----
+            this.flowHeaderActions.AutoSize = true;
+            this.flowHeaderActions.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
+            this.flowHeaderActions.FlowDirection = System.Windows.Forms.FlowDirection.LeftToRight;
+            this.flowHeaderActions.WrapContents = false;
+            this.flowHeaderActions.Anchor = System.Windows.Forms.AnchorStyles.Right;
+            this.flowHeaderActions.Margin = new System.Windows.Forms.Padding(0);
+            this.flowHeaderActions.Padding = new System.Windows.Forms.Padding(0);
+
+            this.btnBulkContact.Width = 180;
+            this.btnBulkContact.Height = 32;
+            this.btnBulkContact.Margin = new System.Windows.Forms.Padding(0);
+            this.btnBulkContact.Text = "Bulk Contact";
+            this.btnBulkContact.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnBulkContact.FlatAppearance.BorderSize = 0;
+
+            this.flowHeaderActions.Controls.Add(this.btnBulkContact);
+
+            // ---- Row 1, col 0–3 (span): lblPointsInfo ----
             this.lblPointsInfo.AutoSize = false;
             this.lblPointsInfo.Height = 24;
             this.lblPointsInfo.Dock = System.Windows.Forms.DockStyle.Fill;
             this.lblPointsInfo.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Italic);
             this.lblPointsInfo.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             this.lblPointsInfo.Padding = new System.Windows.Forms.Padding(2, 4, 0, 0);
-            this.lblPointsInfo.Text = "Loyalty: ₱1 spent = 1 point earned. 100 points = ₱1 discount.";
+            this.lblPointsInfo.Text = "Loyalty: ₱1 spent = 10 points earned. 100 points = ₱1 discount.";
 
             this.tblHeader.Controls.Add(this.flowSearch, 0, 0);
             this.tblHeader.Controls.Add(this.flowStatus, 1, 0);
+            this.tblHeader.Controls.Add(this.flowHeaderActions, 3, 0);
             this.tblHeader.Controls.Add(this.lblPointsInfo, 0, 1);
-            this.tblHeader.SetColumnSpan(this.lblPointsInfo, 2);
+            this.tblHeader.SetColumnSpan(this.lblPointsInfo, 4);
 
             this.pnlTop.Controls.Add(this.tblHeader);
 
@@ -321,6 +349,8 @@
             this.flowSearch.PerformLayout();
             this.flowStatus.ResumeLayout(false);
             this.flowStatus.PerformLayout();
+            this.flowHeaderActions.ResumeLayout(false);
+            this.flowHeaderActions.PerformLayout();
             this.pnlGridWrap.ResumeLayout(false);
             this.pnlPager.ResumeLayout(false);
             this.tblPager.ResumeLayout(false);

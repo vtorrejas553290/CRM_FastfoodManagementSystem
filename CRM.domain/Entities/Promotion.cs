@@ -25,4 +25,7 @@ public class Promotion
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public ICollection<PromotionRedemption> Redemptions { get; set; } = new List<PromotionRedemption>();
+
+    public int? PromotionCategoryId { get; set; }
+    public PromotionCategory? PromotionCategory { get; set; }
 }
