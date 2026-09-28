@@ -8,6 +8,8 @@
         private System.Windows.Forms.TableLayoutPanel tblHeader;
         private System.Windows.Forms.Label lblReportType;
         private System.Windows.Forms.ComboBox cmbReportType;
+        private System.Windows.Forms.Label lblBranchFilter;      // NEW
+        private System.Windows.Forms.ComboBox cmbBranchFilter;  // NEW
         private System.Windows.Forms.Label lblDateRange;
         private System.Windows.Forms.ComboBox cmbDateRange;
         private System.Windows.Forms.Label lblFromDate;
@@ -45,6 +47,8 @@
             this.tblHeader = new System.Windows.Forms.TableLayoutPanel();
             this.lblReportType = new System.Windows.Forms.Label();
             this.cmbReportType = new System.Windows.Forms.ComboBox();
+            this.lblBranchFilter = new System.Windows.Forms.Label();      // NEW
+            this.cmbBranchFilter = new System.Windows.Forms.ComboBox();  // NEW
             this.lblDateRange = new System.Windows.Forms.Label();
             this.cmbDateRange = new System.Windows.Forms.ComboBox();
             this.lblFromDate = new System.Windows.Forms.Label();
@@ -78,9 +82,7 @@
             this.SuspendLayout();
 
             // ============================================================
-            // pnlHeader — hosts a two-column TableLayoutPanel
-            //   Row 0: Date Range + From + To
-            //   Row 1: Report Type (left) + Export PDF (right)
+            // pnlHeader
             // ============================================================
             this.pnlHeader.Dock = System.Windows.Forms.DockStyle.Top;
             this.pnlHeader.Height = 128;
@@ -151,7 +153,7 @@
             flowDateRow.Controls.Add(this.lblToDate);
             flowDateRow.Controls.Add(this.dtpToDate);
 
-            // ---- Row 1: Report Type on the left, Export PDF on the right ----
+            // ---- Row 1: Report Type + Branch + Export PDF ----
             var flowReportTypeRow = new System.Windows.Forms.FlowLayoutPanel
             {
                 Dock = System.Windows.Forms.DockStyle.Fill,
@@ -169,13 +171,26 @@
 
             this.cmbReportType.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.cmbReportType.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
-            this.cmbReportType.Width = 240;
-            this.cmbReportType.Margin = new System.Windows.Forms.Padding(0);
+            this.cmbReportType.Width = 200;
+            this.cmbReportType.Margin = new System.Windows.Forms.Padding(0, 0, 16, 0);
+
+            // NEW — branch filter
+            this.lblBranchFilter.AutoSize = true;
+            this.lblBranchFilter.Margin = new System.Windows.Forms.Padding(0, 6, 8, 0);
+            this.lblBranchFilter.Text = "BRANCH";
+            this.lblBranchFilter.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+
+            this.cmbBranchFilter.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.cmbBranchFilter.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.cmbBranchFilter.Width = 220;
+            this.cmbBranchFilter.Margin = new System.Windows.Forms.Padding(0);
 
             flowReportTypeRow.Controls.Add(this.lblReportType);
             flowReportTypeRow.Controls.Add(this.cmbReportType);
+            flowReportTypeRow.Controls.Add(this.lblBranchFilter);   // NEW
+            flowReportTypeRow.Controls.Add(this.cmbBranchFilter);   // NEW
 
-            // Export PDF — Dock Fill in the right column
+            // Export PDF
             this.btnExportPdf.Dock = System.Windows.Forms.DockStyle.Fill;
             this.btnExportPdf.Margin = new System.Windows.Forms.Padding(0, 4, 0, 0);
             this.btnExportPdf.Text = "Export PDF";

@@ -19,4 +19,13 @@ public class ReportFilter
 
     /// <summary>Inclusive upper bound, or null for "no upper bound".</summary>
     public DateTime? ToDate { get; set; }
+
+    // ---- NEW — branch filter ----
+    /// <summary>
+    /// When set (positive), Sales / Customer / Feedback reports filter to
+    /// this branch. null = all branches.
+    /// Ignored for Inventory / Promotions reports (those tables have no
+    /// BranchId column).
+    /// </summary>
+    public int? BranchIdFilter { get; set; } = null;
 }

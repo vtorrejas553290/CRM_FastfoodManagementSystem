@@ -16,10 +16,16 @@ public class ReportController : IReportController
         var to = filter.ToDate;
         var type = filter.ReportType ?? "Sales Report";
 
-        // NEW — branch filter settings (computed once)
-        bool applyBranchFilter = !AppServices.CurrentUserIsAdmin;
-        int? branchId = AppServices.CurrentBranchId;
-        bool showNothing = applyBranchFilter && !branchId.HasValue;
+        // Branch filter computation:
+        //  - Admin: uses filter.BranchIdFilter (chosen from the report's dropdown)
+        //    null = All Branches → no filter
+        //  - Manager/Staff: forced to their own branch (AppServices.CurrentBranchId)
+        //    no branch assigned → showNothing
+        int? effectiveBranchId = AppServices.CurrentUserIsAdmin
+            ? filter.BranchIdFilter
+            : AppServices.CurrentBranchId;
+
+        bool showNothing = !AppServices.CurrentUserIsAdmin && !effectiveBranchId.HasValue;
 
         var result = new ReportResult();
 
@@ -36,9 +42,8 @@ public class ReportController : IReportController
                         .Where(t => (from == null || t.PaidAt >= from)
                                  && (to == null || t.PaidAt <= to));
 
-                    // NEW — branch filter
-                    if (applyBranchFilter && branchId.HasValue)
-                        query = query.Where(t => t.BranchId == branchId.Value);
+                    if (effectiveBranchId.HasValue)
+                        query = query.Where(t => t.BranchId == effectiveBranchId.Value);
 
                     foreach (var row in query
                         .OrderByDescending(t => t.PaidAt)
@@ -107,9 +112,8 @@ public class ReportController : IReportController
                         .Where(c => (from == null || c.CreatedAt >= from)
                                  && (to == null || c.CreatedAt <= to));
 
-                    // NEW — branch filter
-                    if (applyBranchFilter && branchId.HasValue)
-                        query = query.Where(c => c.BranchId == branchId.Value);
+                    if (effectiveBranchId.HasValue)
+                        query = query.Where(c => c.BranchId == effectiveBranchId.Value);
 
                     foreach (var row in query
                         .OrderByDescending(c => c.CreatedAt)
@@ -148,9 +152,8 @@ public class ReportController : IReportController
                         .Where(f => (from == null || f.SubmittedAt >= from)
                                  && (to == null || f.SubmittedAt <= to));
 
-                    // NEW — branch filter
-                    if (applyBranchFilter && branchId.HasValue)
-                        query = query.Where(f => f.BranchId == branchId.Value);
+                    if (effectiveBranchId.HasValue)
+                        query = query.Where(f => f.BranchId == effectiveBranchId.Value);
 
                     foreach (var row in query
                         .OrderByDescending(f => f.SubmittedAt)

@@ -11,6 +11,7 @@ namespace CRM.winForms.Forms;
 public partial class FrmReports : Form
 {
     private readonly IReportController _controller = new ReportController();
+    private readonly IBranchController _branchController = new BranchController();   // NEW
 
     // ---- Report state ----
     private List<string> _columns = new();
@@ -29,6 +30,8 @@ public partial class FrmReports : Form
 
         cmbReportType.SelectedIndexChanged += (_, __) =>
         {
+            // NEW — update branch filter visibility based on the report type
+            UpdateBranchFilterVisibility();
             _currentPage = 1;
             GenerateReport();
         };
@@ -71,6 +74,13 @@ public partial class FrmReports : Form
             GenerateReport();
         };
 
+        // NEW — branch filter change
+        cmbBranchFilter.SelectedIndexChanged += (_, __) =>
+        {
+            _currentPage = 1;
+            GenerateReport();
+        };
+
         cmbPageSize.SelectedIndexChanged += (_, __) =>
         {
             _currentPage = 1;
@@ -89,8 +99,6 @@ public partial class FrmReports : Form
         pnlHeader.BackColor = AppTheme.Surface;
         pnlPager.BackColor = AppTheme.Surface;
 
-        
-
         AppTheme.StyleLabel(lblReportType);
         AppTheme.StyleLabel(lblDateRange);
         AppTheme.StyleLabel(lblFromDate);
@@ -100,6 +108,16 @@ public partial class FrmReports : Form
         AppTheme.StyleSecondaryButton(btnExportPdf);
         AppTheme.StyleGrid(gridReport);
         AppTheme.StyleLabel(lblStatus);
+
+        // NEW — branch filter styling + visibility
+        AppTheme.StyleLabel(lblBranchFilter);
+        AppTheme.StyleInput(cmbBranchFilter);
+
+        bool planHasBranching = UserSession.HasBranching
+                                && UserSession.IsAdmin
+                                && !UserSession.IsSuperAdmin;
+        lblBranchFilter.Visible = planHasBranching;
+        cmbBranchFilter.Visible = planHasBranching;
 
         AppTheme.StyleLabel(lblPageSize);
         AppTheme.StyleLabel(lblPageInfo);
@@ -139,7 +157,97 @@ public partial class FrmReports : Form
         SyncDatePickersFromRange();
         _syncingDates = false;
 
+        // NEW — populate branch dropdown before initial visibility toggle
+        InitBranchFilter();
+        UpdateBranchFilterVisibility();
+
         GenerateReport();
+    }
+
+    // ============================================================
+    //  BRANCH FILTER (NEW)
+    // ============================================================
+
+    private void InitBranchFilter()
+    {
+        cmbBranchFilter.Items.Clear();
+
+        if (!UserSession.HasBranching || !UserSession.IsAdmin || UserSession.IsSuperAdmin)
+            return;
+
+        try
+        {
+            var filter = new BranchFilter
+            {
+                Search = "",
+                ShowArchived = false,
+                CompanyId = UserSession.CompanyId
+            };
+
+            var branches = _branchController.GetBranches(filter);
+
+            var items = new List<BranchFilterItem>
+            {
+                new BranchFilterItem { BranchIdFilter = null, Display = "All Branches" }
+            };
+
+            foreach (var b in branches.OrderBy(x => x.BranchCode))
+            {
+                items.Add(new BranchFilterItem
+                {
+                    BranchIdFilter = b.BranchId,
+                    Display = $"{b.BranchCode} — {b.BranchName}"
+                });
+            }
+
+            cmbBranchFilter.DisplayMember = nameof(BranchFilterItem.Display);
+            cmbBranchFilter.ValueMember = nameof(BranchFilterItem.BranchIdFilter);
+            cmbBranchFilter.DataSource = items;
+            cmbBranchFilter.SelectedIndex = 0;
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show("Failed to load branches: " + ex.Message, "Error");
+        }
+    }
+
+    /// <summary>
+    /// NEW — hides the branch dropdown when the report type is not branch-aware.
+    /// Inventory Report and Promotions Report have no BranchId column, so
+    /// filtering by branch would be misleading (all rows would be shown anyway).
+    /// </summary>
+    private void UpdateBranchFilterVisibility()
+    {
+        bool planHasBranching = UserSession.HasBranching
+                                && UserSession.IsAdmin
+                                && !UserSession.IsSuperAdmin;
+
+        if (!planHasBranching)
+        {
+            lblBranchFilter.Visible = false;
+            cmbBranchFilter.Visible = false;
+            return;
+        }
+
+        var reportType = cmbReportType.SelectedItem?.ToString() ?? "Sales Report";
+
+        bool reportSupportsBranch =
+            reportType == "Sales Report" ||
+            reportType == "Customer Report" ||
+            reportType == "Feedback Report";
+
+        lblBranchFilter.Visible = reportSupportsBranch;
+        cmbBranchFilter.Visible = reportSupportsBranch;
+    }
+
+    private int? GetSelectedBranchFilter()
+    {
+        if (!cmbBranchFilter.Visible) return null;
+
+        if (cmbBranchFilter.SelectedItem is BranchFilterItem item)
+            return item.BranchIdFilter;
+
+        return null;
     }
 
     private void SyncDatePickersFromRange()
@@ -198,7 +306,8 @@ public partial class FrmReports : Form
                 ReportType = cmbReportType.SelectedItem?.ToString() ?? "Sales Report",
                 DateRange = cmbDateRange.SelectedItem?.ToString() ?? "Last 7 Days",
                 FromDate = from,
-                ToDate = to
+                ToDate = to,
+                BranchIdFilter = GetSelectedBranchFilter()   // NEW
             };
 
             var result = _controller.GetReport(filter);
@@ -317,7 +426,7 @@ public partial class FrmReports : Form
     }
 
     // ============================================================
-    //  PDF EXPORT — full dataset, not just the current page
+    //  PDF EXPORT
     // ============================================================
 
     private void ExportToPdf()
@@ -440,5 +549,12 @@ public partial class FrmReports : Form
             bool b => b ? "Yes" : "No",
             _ => value.ToString() ?? ""
         };
+    }
+
+    // NEW — inner class for the branch dropdown data source
+    private sealed class BranchFilterItem
+    {
+        public int? BranchIdFilter { get; set; }
+        public string Display { get; set; } = "";
     }
 }

@@ -2,7 +2,7 @@
   "profiles": {
     "CRM.winforms": {
       "commandName": "Project",
-      "commandLineArgs": "--seedsuper"
+      "commandLineArgs": "--reseedA"
     }
   }
 }
