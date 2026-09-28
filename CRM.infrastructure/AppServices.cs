@@ -46,8 +46,11 @@ public static class AppServices
 
     public static MasterCrmDbContext CreateMasterContext()
     {
-        var cs = Configuration.GetConnectionString("MasterCrm")
-            ?? throw new InvalidOperationException("MasterCrm connection string missing.");
+        bool useCloud = Configuration.GetValue<bool>("UseCloudDatabase");
+
+        string csName = useCloud ? "MasterCrm_Cloud" : "MasterCrm";
+        var cs = Configuration.GetConnectionString(csName)
+            ?? throw new InvalidOperationException($"{csName} connection string missing.");
 
         var options = new DbContextOptionsBuilder<MasterCrmDbContext>()
             .UseSqlServer(cs)
@@ -103,16 +106,39 @@ public static class AppServices
                 "Check DB_MasterCRM.dbo.CompanyDatabases.");
 
         // 2. Build the tenant connection string from ServerName + DatabaseName.
-        //    LocalDB uses Windows Authentication (no password), so we use
-        //    Trusted_Connection=True. If we later move to SQL Express with
-        //    per-tenant logins, we read the password from
-        //    Configuration["TenantCredentials:" + routing.CredentialKey].
-        var cs =
-            $"Server={routing.ServerName};" +
-            $"Database={routing.DatabaseName};" +
-            "Trusted_Connection=True;" +
-            "TrustServerCertificate=True;" +
-            "MultipleActiveResultSets=True;";
+        //    Local mode: Windows Auth (Trusted_Connection=True).
+        //    Cloud mode: read User + Password from TenantCredentials_Cloud[CredentialKey].
+        bool useCloud = Configuration.GetValue<bool>("UseCloudDatabase");
+
+        string cs;
+        if (useCloud)
+        {
+            string key = "TenantCredentials_Cloud:" + routing.CredentialKey;
+            string? user = Configuration[key + ":User"];
+            string? pwd = Configuration[key + ":Password"];
+
+            if (string.IsNullOrWhiteSpace(user) || string.IsNullOrWhiteSpace(pwd))
+                throw new InvalidOperationException(
+                    $"Cloud tenant credentials missing for CredentialKey='{routing.CredentialKey}'. " +
+                    $"Expected TenantCredentials_Cloud:{routing.CredentialKey}:User / :Password in appsettings.json.");
+
+            cs =
+                $"Server={routing.ServerName};" +
+                $"Database={routing.DatabaseName};" +
+                $"User Id={user};" +
+                $"Password={pwd};" +
+                "TrustServerCertificate=True;" +
+                "MultipleActiveResultSets=True;";
+        }
+        else
+        {
+            cs =
+                $"Server={routing.ServerName};" +
+                $"Database={routing.DatabaseName};" +
+                "Trusted_Connection=True;" +
+                "TrustServerCertificate=True;" +
+                "MultipleActiveResultSets=True;";
+        }
 
         var options = new DbContextOptionsBuilder<TenantCrmDbContext>()
             .UseSqlServer(cs)

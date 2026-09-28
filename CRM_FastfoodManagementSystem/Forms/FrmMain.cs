@@ -49,6 +49,11 @@ public partial class FrmMain : Form
                 form => HookNavigation((FrmBusinessIntelligence)form));
             HighlightMenuButton("Business Intelligence");
         }
+        else if (UserSession.IsAdmin)
+        {
+            ShowForm(new FrmAdminDashboard(), "Dashboard");
+            HighlightMenuButton("Dashboard");
+        }
         else if (UserSession.IsManager)
         {
             ShowForm(new FrmManagerDashboard(), "Dashboard");
@@ -85,6 +90,12 @@ public partial class FrmMain : Form
             AddMenuButton("Business Intelligence",
                 () => ShowForm(new FrmBusinessIntelligence(), "Business Intelligence",
                     form => HookNavigation((FrmBusinessIntelligence)form)));
+        }
+
+        if (UserSession.IsAdmin && !UserSession.HasBusinessIntelligence)
+        {
+            AddMenuButton("Dashboard",
+                () => ShowForm(new FrmAdminDashboard(), "Dashboard"));
         }
 
         if (UserSession.IsManager)
