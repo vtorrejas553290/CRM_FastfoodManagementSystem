@@ -17,6 +17,18 @@ public class CustomerController : ICustomerController
 
         var query = db.Customers.AsNoTracking();
 
+        // NEW — branch filter.
+        // Admin/SuperAdmin → see all branches.
+        // Manager/Staff with a branch → only that branch's customers.
+        // Manager/Staff without a branch → nothing.
+        if (!AppServices.CurrentUserIsAdmin)
+        {
+            if (!AppServices.CurrentBranchId.HasValue)
+                return new List<CustomerRow>();
+
+            query = query.Where(x => x.BranchId == AppServices.CurrentBranchId.Value);
+        }
+
         // Show only the relevant set: archived when toggled, active otherwise
         if (showArchived)
             query = query.Where(x => !x.IsActive);

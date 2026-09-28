@@ -11,6 +11,29 @@ public static class AppServices
 {
     public static IConfigurationRoot Configuration { get; private set; } = null!;
 
+    /// <summary>
+    /// Ambient tenant context. Set by FrmLogin after successful tenant login.
+    /// The no-arg CreateTenantContext() uses this to route to the correct
+    /// tenant server. SuperAdmin leaves this at 0 (no tenant context).
+    /// </summary>
+    public static int CurrentCompanyId { get; set; } = 0;
+
+    // ---- NEW — ambient branch context (Wave 3: branch filtering) ----
+
+    /// <summary>
+    /// The BranchId of the currently logged-in user, or null if none.
+    /// Set by FrmLogin after successful tenant login.
+    /// Controllers use this to filter lists by branch when the user is
+    /// not an admin.
+    /// </summary>
+    public static int? CurrentBranchId { get; set; } = null;
+
+    /// <summary>
+    /// True when the currently logged-in user is an Admin or SuperAdmin.
+    /// Admins see everything, so controllers skip the branch filter for them.
+    /// </summary>
+    public static bool CurrentUserIsAdmin { get; set; } = false;
+
     public static void Initialize()
     {
         Configuration = new ConfigurationBuilder()
@@ -33,16 +56,25 @@ public static class AppServices
         return new MasterCrmDbContext(options);
     }
 
+    /// <summary>
+    /// Returns a TenantCrmDbContext routed to the currently logged-in tenant.
+    /// The tenant is determined by <see cref="CurrentCompanyId"/>, which is
+    /// set by FrmLogin after successful authentication.
+    ///
+    /// This overload preserves backward compatibility with every existing
+    /// call site in the codebase — they continue to call CreateTenantContext()
+    /// with no arguments, but now get the correct per-tenant context.
+    /// </summary>
     public static TenantCrmDbContext CreateTenantContext()
     {
-        var cs = Configuration.GetConnectionString("TenantCrm")
-            ?? throw new InvalidOperationException("TenantCrm connection string missing.");
+        if (CurrentCompanyId <= 0)
+            throw new InvalidOperationException(
+                "No tenant context is active. Either the user has not logged in " +
+                "as a tenant user, or CurrentCompanyId was not set. " +
+                "(SuperAdmin has no tenant context — do not call tenant methods " +
+                "while logged in as SuperAdmin.)");
 
-        var options = new DbContextOptionsBuilder<TenantCrmDbContext>()
-            .UseSqlServer(cs)
-            .Options;
-
-        return new TenantCrmDbContext(options);
+        return CreateTenantContext(CurrentCompanyId);
     }
 
     /// <summary>

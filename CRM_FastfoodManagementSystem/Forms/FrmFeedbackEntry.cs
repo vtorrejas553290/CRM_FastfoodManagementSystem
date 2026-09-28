@@ -130,7 +130,8 @@ public partial class FrmFeedbackEntry : Form
                     Comments = txtComments.Text.Trim(),
                     Category = cmbCategory.SelectedItem?.ToString(),
                     Status = "New",
-                    SubmittedAt = DateTime.UtcNow
+                    SubmittedAt = DateTime.UtcNow,
+                    BranchId = UserSession.BranchId    // NEW — stamp creator's branch
                 });
 
                 db.SaveChanges();

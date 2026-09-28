@@ -16,48 +16,66 @@ public class BiController : IBiController
         var now = filter.Now;
         var from = filter.FromDate;
         var to = filter.ToDate;
+        var branchId = filter.BranchIdFilter;   // NEW — null = all branches
 
         var s = new BiSnapshot();
 
         // ================= KPI Row 1 =================
         s.TotalRevenue = db.Transactions
-            .Where(t => (from == null || t.PaidAt >= from)
+            .Where(t => (branchId == null || t.BranchId == branchId)
+                     && (from == null || t.PaidAt >= from)
                      && (to == null || t.PaidAt <= to))
             .Select(t => (decimal?)t.AmountPaid).Sum() ?? 0m;
 
         s.TotalTransactions = db.Transactions
-            .Count(t => (from == null || t.PaidAt >= from)
+            .Count(t => (branchId == null || t.BranchId == branchId)
+                     && (from == null || t.PaidAt >= from)
                      && (to == null || t.PaidAt <= to));
 
         // Today cards are literal today, not period-scoped
         s.TodaySales = db.Transactions
-            .Where(t => t.PaidAt.Date == now.Date)
+            .Where(t => (branchId == null || t.BranchId == branchId)
+                     && t.PaidAt.Date == now.Date)
             .Select(t => (decimal?)t.AmountPaid).Sum() ?? 0m;
 
-        s.TodayOrders = db.Orders.Count(o => o.OrderDate.Date == now.Date);
+        s.TodayOrders = db.Orders
+            .Count(o => (branchId == null || o.BranchId == branchId)
+                     && o.OrderDate.Date == now.Date);
 
         s.TotalOrders = db.Orders
-            .Count(o => (from == null || o.OrderDate >= from)
+            .Count(o => (branchId == null || o.BranchId == branchId)
+                     && (from == null || o.OrderDate >= from)
                      && (to == null || o.OrderDate <= to));
 
         decimal totalOrderValue = db.Orders
-            .Where(o => (from == null || o.OrderDate >= from)
+            .Where(o => (branchId == null || o.BranchId == branchId)
+                     && (from == null || o.OrderDate >= from)
                      && (to == null || o.OrderDate <= to))
             .Select(o => (decimal?)o.TotalAmount).Sum() ?? 0m;
 
         s.AverageOrderValue = s.TotalOrders > 0 ? totalOrderValue / s.TotalOrders : 0m;
 
-        s.ActiveCustomers = db.Customers.Count(c => c.IsActive);
-        s.NewCustomersLast30Days = db.Customers.Count(c => c.CreatedAt >= now.AddDays(-30));
-        s.TotalPoints = db.Customers.Where(c => c.IsActive)
+        s.ActiveCustomers = db.Customers
+            .Count(c => (branchId == null || c.BranchId == branchId) && c.IsActive);
+
+        s.NewCustomersLast30Days = db.Customers
+            .Count(c => (branchId == null || c.BranchId == branchId)
+                     && c.CreatedAt >= now.AddDays(-30));
+
+        s.TotalPoints = db.Customers
+            .Where(c => (branchId == null || c.BranchId == branchId) && c.IsActive)
             .Sum(c => (int?)c.CurrentPoints) ?? 0;
 
         // ================= KPI Row 2 =================
         s.LowStockCount = db.Inventories.Count(i => i.QuantityOnHand <= i.ReorderLevel);
-        s.OpenFeedbackCount = db.CustomerFeedbacks.Count(f => f.Status == "New");
+
+        s.OpenFeedbackCount = db.CustomerFeedbacks
+            .Count(f => (branchId == null || f.BranchId == branchId)
+                     && f.Status == "New");
 
         var feedbackForPeriod = db.CustomerFeedbacks
-            .Where(f => (from == null || f.SubmittedAt >= from)
+            .Where(f => (branchId == null || f.BranchId == branchId)
+                     && (from == null || f.SubmittedAt >= from)
                      && (to == null || f.SubmittedAt <= to));
 
         s.AverageRating = feedbackForPeriod.Any()
@@ -74,7 +92,7 @@ public class BiController : IBiController
 
         var customerStats = db.Customers
             .AsNoTracking()
-            .Where(c => c.IsActive)
+            .Where(c => (branchId == null || c.BranchId == branchId) && c.IsActive)
             .Select(c => new
             {
                 c.CustomerId,
@@ -156,21 +174,22 @@ public class BiController : IBiController
             .ToList();
 
         // ================= Charts =================
-        // Sales chart always shows the last 7 calendar days, independent of period.
         s.SalesLast7 = Enumerable.Range(0, 7)
             .Select(i => now.Date.AddDays(-6 + i))
             .Select(d => new BiSalesDay
             {
                 Day = d,
                 Total = db.Transactions
-                    .Where(t => t.PaidAt.Date == d)
+                    .Where(t => (branchId == null || t.BranchId == branchId)
+                             && t.PaidAt.Date == d)
                     .Select(t => (decimal?)t.AmountPaid).Sum() ?? 0m
             })
             .ToList();
 
         s.TopProducts = db.OrderItems
             .Include(oi => oi.Product)
-            .Where(oi => (from == null || oi.Order!.OrderDate >= from)
+            .Where(oi => (branchId == null || oi.Order!.BranchId == branchId)
+                      && (from == null || oi.Order!.OrderDate >= from)
                       && (to == null || oi.Order!.OrderDate <= to))
             .GroupBy(oi => oi.Product!.ProductName)
             .Select(g => new { Name = g.Key, Qty = g.Sum(oi => oi.Quantity) })
@@ -182,7 +201,8 @@ public class BiController : IBiController
 
         s.RatingDistribution = new int[5];
         foreach (var fb in db.CustomerFeedbacks
-            .Where(f => (from == null || f.SubmittedAt >= from)
+            .Where(f => (branchId == null || f.BranchId == branchId)
+                     && (from == null || f.SubmittedAt >= from)
                      && (to == null || f.SubmittedAt <= to)))
         {
             int r = Math.Clamp(fb.Rating, 1, 5);
@@ -190,7 +210,8 @@ public class BiController : IBiController
         }
 
         s.PaymentSplit = db.Transactions
-            .Where(t => (from == null || t.PaidAt >= from)
+            .Where(t => (branchId == null || t.BranchId == branchId)
+                     && (from == null || t.PaidAt >= from)
                      && (to == null || t.PaidAt <= to))
             .GroupBy(t => t.PaymentMethod)
             .Select(g => new { Method = g.Key, Count = g.Count() })
@@ -199,9 +220,9 @@ public class BiController : IBiController
             .ToList();
 
         // ================= Tables =================
-        // Recent Orders always shows the 10 most recent, regardless of period.
         s.RecentOrders = db.Orders
             .Include(o => o.Customer)
+            .Where(o => branchId == null || o.BranchId == branchId)
             .OrderByDescending(o => o.OrderDate)
             .Take(10)
             .ToList()
@@ -220,7 +241,8 @@ public class BiController : IBiController
 
         s.TopCustomers = db.Orders
             .Include(o => o.Customer)
-            .Where(o => (from == null || o.OrderDate >= from)
+            .Where(o => (branchId == null || o.BranchId == branchId)
+                     && (from == null || o.OrderDate >= from)
                      && (to == null || o.OrderDate <= to))
             .ToList()
             .GroupBy(o => new
@@ -249,7 +271,7 @@ public class BiController : IBiController
             .ToList();
 
         // ================= Insights =================
-        BuildInsights(db, s, now, from, to);
+        BuildInsights(db, s, now, from, to, branchId);
         BuildRetentionInsights(s);
 
         return s;
@@ -257,16 +279,19 @@ public class BiController : IBiController
 
     private static void BuildInsights(
         TenantCrmDbContext db, BiSnapshot s, DateTime now,
-        DateTime? from, DateTime? to)
+        DateTime? from, DateTime? to, int? branchId)
     {
         var list = new List<BiInsight>();
 
         decimal thisWeek = db.Transactions
-            .Where(t => t.PaidAt >= now.Date.AddDays(-6))
+            .Where(t => (branchId == null || t.BranchId == branchId)
+                     && t.PaidAt >= now.Date.AddDays(-6))
             .Select(t => (decimal?)t.AmountPaid).Sum() ?? 0m;
 
         decimal lastWeek = db.Transactions
-            .Where(t => t.PaidAt >= now.Date.AddDays(-13) && t.PaidAt < now.Date.AddDays(-6))
+            .Where(t => (branchId == null || t.BranchId == branchId)
+                     && t.PaidAt >= now.Date.AddDays(-13)
+                     && t.PaidAt < now.Date.AddDays(-6))
             .Select(t => (decimal?)t.AmountPaid).Sum() ?? 0m;
 
         if (lastWeek > 0)
@@ -363,7 +388,8 @@ public class BiController : IBiController
         }
 
         var customerOrderCounts = db.Orders
-            .Where(o => (from == null || o.OrderDate >= from)
+            .Where(o => (branchId == null || o.BranchId == branchId)
+                     && (from == null || o.OrderDate >= from)
                      && (to == null || o.OrderDate <= to))
             .GroupBy(o => o.CustomerId)
             .Select(g => new { Count = g.Count(), Spent = g.Sum(o => o.TotalAmount) })
@@ -406,7 +432,9 @@ public class BiController : IBiController
                 });
         }
 
-        int lowRatingCount = db.CustomerFeedbacks.Count(f => f.Rating <= 2);
+        int lowRatingCount = db.CustomerFeedbacks
+            .Count(f => (branchId == null || f.BranchId == branchId) && f.Rating <= 2);
+
         if (lowRatingCount > 0)
             list.Add(new BiInsight
             {
@@ -430,7 +458,9 @@ public class BiController : IBiController
 
         if (s.TotalPoints > 0)
         {
-            int withPoints = db.Customers.Count(c => c.CurrentPoints > 0);
+            int withPoints = db.Customers
+                .Count(c => (branchId == null || c.BranchId == branchId) && c.CurrentPoints > 0);
+
             list.Add(new BiInsight
             {
                 Icon = "🎯",
@@ -440,6 +470,7 @@ public class BiController : IBiController
         }
 
         var lastSaleDate = db.Transactions
+            .Where(t => branchId == null || t.BranchId == branchId)
             .OrderByDescending(t => t.PaidAt)
             .Select(t => (DateTime?)t.PaidAt)
             .FirstOrDefault();

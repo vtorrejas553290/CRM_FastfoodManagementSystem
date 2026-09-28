@@ -22,6 +22,18 @@ public class TransactionController : ITransactionController
                 .ThenInclude(o => o.Customer)
             .AsNoTracking();
 
+        // NEW — branch filter.
+        // Admin/SuperAdmin → see all branches.
+        // Manager/Staff with a branch → only that branch's transactions.
+        // Manager/Staff without a branch → nothing.
+        if (!AppServices.CurrentUserIsAdmin)
+        {
+            if (!AppServices.CurrentBranchId.HasValue)
+                return new List<TransactionRow>();
+
+            query = query.Where(x => x.BranchId == AppServices.CurrentBranchId.Value);
+        }
+
         if (method != "All")
             query = query.Where(x => x.PaymentMethod == method);
 

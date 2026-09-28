@@ -241,7 +241,8 @@ public partial class FrmComplaintEditor : Form
                     Status = "Open",
                     SubmittedAt = DateTime.UtcNow,
                     CreatedByUserId = UserSession.UserId,
-                    IsArchived = false
+                    IsArchived = false,
+                    BranchId = UserSession.BranchId    // NEW — stamp creator's branch
                 };
 
                 db.Complaints.Add(complaint);

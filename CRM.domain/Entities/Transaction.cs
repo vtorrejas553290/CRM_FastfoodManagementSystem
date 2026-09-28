@@ -6,15 +6,19 @@ public class Transaction
 
     public int OrderId { get; set; }
 
-    public string PaymentMethod { get; set; } = "Cash";   // "Cash" or "GCash"
+    public string PaymentMethod { get; set; } = "Cash";
 
     public decimal AmountPaid { get; set; }
 
     public decimal ChangeDue { get; set; }
 
-    public string? ReferenceNumber { get; set; }          // for GCash
+    public string? ReferenceNumber { get; set; }
 
     public DateTime PaidAt { get; set; } = DateTime.UtcNow;
+
+    // NEW — which branch this transaction belongs to
+    public int? BranchId { get; set; }
+    public Branch? Branch { get; set; }
 
     public Order? Order { get; set; }
 }

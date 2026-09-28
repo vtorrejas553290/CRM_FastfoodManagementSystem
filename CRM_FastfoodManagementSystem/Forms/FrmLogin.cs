@@ -125,6 +125,11 @@ public partial class FrmLogin : Form
         UserSession.HasActions = true;
         UserSession.HasBranching = true;
 
+        // NEW — SuperAdmin has no tenant context, sees everything
+        AppServices.CurrentCompanyId = 0;
+        AppServices.CurrentBranchId = null;
+        AppServices.CurrentUserIsAdmin = true;
+
         ActivityLogger.Log("Login", "AspNetUsers", null,
             $"Super Admin '{username}' logged in.");
 
@@ -159,7 +164,7 @@ public partial class FrmLogin : Form
         {
             var user = tenant.Users
                 .Include(x => x.Role)
-                .Include(x => x.Branch)      // NEW — load Branch in same query
+                .Include(x => x.Branch)
                 .AsNoTracking()
                 .FirstOrDefault(x => x.Username == username);
 
@@ -185,7 +190,6 @@ public partial class FrmLogin : Form
             UserSession.CompanyCode = companyCode;
             UserSession.CompanyName = companyName;
 
-            // NEW — copy branch info into session
             UserSession.BranchId = user.BranchId;
             UserSession.BranchName = user.Branch?.BranchName ?? string.Empty;
         }
@@ -210,6 +214,13 @@ public partial class FrmLogin : Form
             UserSession.HasBranching = sub.Plan.HasBranching;
         }
 
+        // NEW — set the ambient tenant + branch context so every form and
+        // controller that calls AppServices.CreateTenantContext() routes to
+        // this tenant's DB, and controllers can filter by this user's branch.
+        AppServices.CurrentCompanyId = companyId;
+        AppServices.CurrentBranchId = UserSession.BranchId;
+        AppServices.CurrentUserIsAdmin = UserSession.IsAdmin;
+
         ActivityLogger.Log("Login", "User", UserSession.UserId,
             $"{UserSession.Username} ({UserSession.RoleCode}) logged in from {UserSession.CompanyCode}");
 
@@ -223,6 +234,10 @@ public partial class FrmLogin : Form
                 if (!gate.WasAccepted)
                 {
                     UserSession.Clear();
+                    // NEW — clear all three ambient contexts on abort
+                    AppServices.CurrentCompanyId = 0;
+                    AppServices.CurrentBranchId = null;
+                    AppServices.CurrentUserIsAdmin = false;
                     lblError.Text = "You must accept the Terms and Conditions to continue.";
                     return false;
                 }

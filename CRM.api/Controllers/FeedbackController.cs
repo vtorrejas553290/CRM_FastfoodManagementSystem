@@ -20,6 +20,18 @@ public class FeedbackController : IFeedbackController
             .Include(x => x.Customer)
             .AsNoTracking();
 
+        // NEW — branch filter.
+        // Admin/SuperAdmin → see all branches.
+        // Manager/Staff with a branch → only that branch's feedback.
+        // Manager/Staff without a branch → nothing.
+        if (!AppServices.CurrentUserIsAdmin)
+        {
+            if (!AppServices.CurrentBranchId.HasValue)
+                return new List<FeedbackRow>();
+
+            query = query.Where(x => x.BranchId == AppServices.CurrentBranchId.Value);
+        }
+
         if (status != "All")
             query = query.Where(x => x.Status == status);
 

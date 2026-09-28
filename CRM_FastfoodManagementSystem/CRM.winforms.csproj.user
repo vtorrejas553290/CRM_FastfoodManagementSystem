@@ -13,6 +13,9 @@
     <Compile Update="Forms\FrmAdminTermsGate.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Update="Forms\FrmBranchDetail.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Update="Forms\FrmBranchEditor.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -127,7 +130,7 @@
     <Compile Update="Forms\FrmViewTransactions.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Update="FrmBranches.cs">
+    <Compile Update="Forms\FrmBranches.cs">
       <SubType>Form</SubType>
     </Compile>
   </ItemGroup>

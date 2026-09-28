@@ -25,7 +25,6 @@ public class UserController : IUserController
         var result = new List<UserRow>();
         var search = (filter.Search ?? "").Trim().ToLower();
 
-        // 1. Read active routing rows from master DB
         List<(int CompanyId, string CompanyName, string ServerName, string DbName)> tenants;
 
         using (var master = AppServices.CreateMasterContext())
@@ -48,8 +47,6 @@ public class UserController : IUserController
                 .ToList();
         }
 
-        // 2. For each tenant, open a DbContext directly (bypass routing helper —
-        //    we already have the routing info in hand) and query the ADMIN user.
         foreach (var t in tenants)
         {
             try
@@ -89,7 +86,7 @@ public class UserController : IUserController
             }
             catch
             {
-                // Skip a tenant that can't be reached — don't break the whole list.
+                // Skip a tenant that can't be reached.
             }
         }
 
@@ -104,11 +101,11 @@ public class UserController : IUserController
     // ================================================================
     private List<UserRow> GetUsersFromSingleTenant(UserFilter filter)
     {
-        // Uses the overload that routes by companyId (we added this earlier).
         using var db = AppServices.CreateTenantContext(filter.CompanyId);
 
         var search = (filter.Search ?? "").Trim().ToLower();
         var showArchived = filter.ShowArchived;
+        var roleFilter = (filter.RoleCodeFilter ?? "All").Trim();
 
         var query = db.Users.Include(x => x.Role).AsNoTracking();
 
@@ -118,6 +115,25 @@ public class UserController : IUserController
                 x.Role!.RoleCode == "STAFF");
         else
             return new List<UserRow>();
+
+        // Apply role filter (ignored when "All")
+        if (roleFilter != "All" &&
+            (roleFilter == "MANAGER" || roleFilter == "STAFF"))
+        {
+            query = query.Where(x => x.Role!.RoleCode == roleFilter);
+        }
+
+        // NEW — branch filter
+        // null   → no filter
+        // > 0    → users assigned to that branch
+        // -1     → users with no branch (Unassigned)
+        if (filter.BranchIdFilter.HasValue)
+        {
+            if (filter.BranchIdFilter.Value == -1)
+                query = query.Where(x => x.BranchId == null);
+            else
+                query = query.Where(x => x.BranchId == filter.BranchIdFilter.Value);
+        }
 
         if (showArchived)
             query = query.Where(x => !x.IsActive);

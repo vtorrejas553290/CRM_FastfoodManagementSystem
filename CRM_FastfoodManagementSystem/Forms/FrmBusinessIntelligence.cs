@@ -11,6 +11,7 @@ public partial class FrmBusinessIntelligence : Form
     public event Action<string>? NavigateRequested;
 
     private readonly IBiController _controller = new BiController();
+    private readonly IBranchController _branchController = new BranchController();
 
     private bool _syncingDates = false;
 
@@ -61,6 +62,13 @@ public partial class FrmBusinessIntelligence : Form
                 cmbDateRange.SelectedItem = "Custom Range";
             _syncingDates = false;
 
+            LoadAll();
+        };
+
+        // NEW — branch filter
+        cmbBranchFilter.SelectedIndexChanged += (_, __) =>
+        {
+            if (_syncingDates) return;
             LoadAll();
         };
 
@@ -163,6 +171,16 @@ public partial class FrmBusinessIntelligence : Form
         AppTheme.StyleInput(cmbDateRange);
         AppTheme.StyleLabel(lblStatus);
 
+        // NEW — branch filter styling + visibility
+        AppTheme.StyleLabel(lblBranchFilter);
+        AppTheme.StyleInput(cmbBranchFilter);
+
+        bool showBranchFilter = UserSession.HasBranching
+                                && UserSession.IsAdmin
+                                && !UserSession.IsSuperAdmin;
+        lblBranchFilter.Visible = showBranchFilter;
+        cmbBranchFilter.Visible = showBranchFilter;
+
         lblInsightsTitle.Font = AppTheme.FontSubheading;
         lblInsightsTitle.ForeColor = AppTheme.TextPrimary;
 
@@ -226,12 +244,72 @@ public partial class FrmBusinessIntelligence : Form
         SyncDatePickersFromPeriod();
         _syncingDates = false;
 
+        // NEW — populate the branch filter before the first load
+        InitBranchFilter();
+
         LoadAll();
 
         BeginInvoke(new Action(() =>
         {
             pnlBody.AutoScrollPosition = new Point(0, 0);
         }));
+    }
+
+    // ============================================================
+    //  BRANCH FILTER (NEW)
+    // ============================================================
+
+    private void InitBranchFilter()
+    {
+        cmbBranchFilter.Items.Clear();
+
+        if (!UserSession.HasBranching || !UserSession.IsAdmin || UserSession.IsSuperAdmin)
+            return;
+
+        try
+        {
+            var filter = new BranchFilter
+            {
+                Search = "",
+                ShowArchived = false,
+                CompanyId = UserSession.CompanyId
+            };
+
+            var branches = _branchController.GetBranches(filter);
+
+            var items = new List<BranchFilterItem>
+            {
+                new BranchFilterItem { BranchIdFilter = null, Display = "All Branches" }
+            };
+
+            foreach (var b in branches.OrderBy(x => x.BranchCode))
+            {
+                items.Add(new BranchFilterItem
+                {
+                    BranchIdFilter = b.BranchId,
+                    Display = $"{b.BranchCode} — {b.BranchName}"
+                });
+            }
+
+            cmbBranchFilter.DisplayMember = nameof(BranchFilterItem.Display);
+            cmbBranchFilter.ValueMember = nameof(BranchFilterItem.BranchIdFilter);
+            cmbBranchFilter.DataSource = items;
+            cmbBranchFilter.SelectedIndex = 0;
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show("Failed to load branches: " + ex.Message, "Error");
+        }
+    }
+
+    private int? GetSelectedBranchFilter()
+    {
+        if (!cmbBranchFilter.Visible) return null;
+
+        if (cmbBranchFilter.SelectedItem is BranchFilterItem item)
+            return item.BranchIdFilter;
+
+        return null;
     }
 
     /// <summary>
@@ -308,13 +386,15 @@ public partial class FrmBusinessIntelligence : Form
         try
         {
             var (from, to) = GetFromTo();
+            var branchIdFilter = GetSelectedBranchFilter();   // NEW
 
             var filter = new BiFilter
             {
                 Period = cmbDateRange.SelectedItem?.ToString() ?? "This Month",
                 FromDate = from,
                 ToDate = to,
-                Now = DateTime.UtcNow
+                Now = DateTime.UtcNow,
+                BranchIdFilter = branchIdFilter   // NEW
             };
 
             var s = _controller.GetSnapshot(filter);
@@ -402,8 +482,13 @@ public partial class FrmBusinessIntelligence : Form
             pnlRetentionSplitChart.Invalidate();
             pnlRetentionRecencyChart.Invalidate();
 
+            // Status line — show branch filter if active
+            string branchLabel = "";
+            if (branchIdFilter.HasValue && cmbBranchFilter.SelectedItem is BranchFilterItem bi)
+                branchLabel = $"  —  Branch: {bi.Display}";
+
             lblStatus.Text =
-                $"Updated {DateTime.Now:HH:mm:ss}  —  Period: {filter.Period}";
+                $"Updated {DateTime.Now:HH:mm:ss}  —  Period: {filter.Period}{branchLabel}";
         }
         catch (Exception ex)
         {
@@ -537,7 +622,7 @@ public partial class FrmBusinessIntelligence : Form
     }
 
     // ============================================================
-    //  CHART PAINTER
+    //  CHART PAINTER  (unchanged)
     // ============================================================
 
     private void ChartPanel_Paint(object? sender, PaintEventArgs e)
@@ -847,5 +932,12 @@ public partial class FrmBusinessIntelligence : Form
             g.DrawString(labels[i], smallFont, textBrush,
                 x + barWidth / 2 - 14, chartBottom + 6);
         }
+    }
+
+    // NEW — inner class for the branch filter dropdown data source
+    private sealed class BranchFilterItem
+    {
+        public int? BranchIdFilter { get; set; }
+        public string Display { get; set; } = "";
     }
 }

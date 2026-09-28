@@ -16,6 +16,11 @@ public class ReportController : IReportController
         var to = filter.ToDate;
         var type = filter.ReportType ?? "Sales Report";
 
+        // NEW — branch filter settings (computed once)
+        bool applyBranchFilter = !AppServices.CurrentUserIsAdmin;
+        int? branchId = AppServices.CurrentBranchId;
+        bool showNothing = applyBranchFilter && !branchId.HasValue;
+
         var result = new ReportResult();
 
         switch (type)
@@ -23,35 +28,49 @@ public class ReportController : IReportController
             case "Sales Report":
                 result.Columns.AddRange(new[] { "TransactionId", "PaidAt", "PaymentMethod", "AmountPaid" });
 
-                foreach (var row in db.Transactions
-                    .Where(t => (from == null || t.PaidAt >= from)
-                             && (to == null || t.PaidAt <= to))
-                    .OrderByDescending(t => t.PaidAt)
-                    .Take(500)
-                    .ToList()
-                    .Select(t => new
-                    {
-                        t.TransactionId,
-                        t.PaidAt,
-                        t.PaymentMethod,
-                        t.AmountPaid
-                    }))
+                if (showNothing)
+                    break;
+
                 {
-                    result.Rows.Add(new ReportRow
-                    {
-                        Cells =
+                    var query = db.Transactions
+                        .Where(t => (from == null || t.PaidAt >= from)
+                                 && (to == null || t.PaidAt <= to));
+
+                    // NEW — branch filter
+                    if (applyBranchFilter && branchId.HasValue)
+                        query = query.Where(t => t.BranchId == branchId.Value);
+
+                    foreach (var row in query
+                        .OrderByDescending(t => t.PaidAt)
+                        .Take(500)
+                        .ToList()
+                        .Select(t => new
                         {
-                            ["TransactionId"] = row.TransactionId,
-                            ["PaidAt"] = row.PaidAt,
-                            ["PaymentMethod"] = row.PaymentMethod,
-                            ["AmountPaid"] = row.AmountPaid
-                        }
-                    });
+                            t.TransactionId,
+                            t.PaidAt,
+                            t.PaymentMethod,
+                            t.AmountPaid
+                        }))
+                    {
+                        result.Rows.Add(new ReportRow
+                        {
+                            Cells =
+                            {
+                                ["TransactionId"] = row.TransactionId,
+                                ["PaidAt"] = row.PaidAt,
+                                ["PaymentMethod"] = row.PaymentMethod,
+                                ["AmountPaid"] = row.AmountPaid
+                            }
+                        });
+                    }
                 }
                 break;
 
             case "Inventory Report":
                 result.Columns.AddRange(new[] { "Product", "QuantityOnHand", "ReorderLevel", "Status" });
+
+                // NOTE — Inventories table has no BranchId column.
+                // This report is intentionally unfiltered (global stock view).
 
                 foreach (var row in db.Inventories
                     .Include(i => i.Product)
@@ -80,63 +99,88 @@ public class ReportController : IReportController
             case "Customer Report":
                 result.Columns.AddRange(new[] { "CustomerName", "CurrentPoints", "IsActive", "CreatedAt" });
 
-                foreach (var row in db.Customers
-                    .Where(c => (from == null || c.CreatedAt >= from)
-                             && (to == null || c.CreatedAt <= to))
-                    .OrderByDescending(c => c.CreatedAt)
-                    .Take(500)
-                    .ToList()
-                    .Select(c => new
-                    {
-                        c.CustomerName,
-                        c.CurrentPoints,
-                        c.IsActive,
-                        c.CreatedAt
-                    }))
+                if (showNothing)
+                    break;
+
                 {
-                    result.Rows.Add(new ReportRow
-                    {
-                        Cells =
+                    var query = db.Customers
+                        .Where(c => (from == null || c.CreatedAt >= from)
+                                 && (to == null || c.CreatedAt <= to));
+
+                    // NEW — branch filter
+                    if (applyBranchFilter && branchId.HasValue)
+                        query = query.Where(c => c.BranchId == branchId.Value);
+
+                    foreach (var row in query
+                        .OrderByDescending(c => c.CreatedAt)
+                        .Take(500)
+                        .ToList()
+                        .Select(c => new
                         {
-                            ["CustomerName"] = row.CustomerName,
-                            ["CurrentPoints"] = row.CurrentPoints,
-                            ["IsActive"] = row.IsActive,
-                            ["CreatedAt"] = row.CreatedAt
-                        }
-                    });
+                            c.CustomerName,
+                            c.CurrentPoints,
+                            c.IsActive,
+                            c.CreatedAt
+                        }))
+                    {
+                        result.Rows.Add(new ReportRow
+                        {
+                            Cells =
+                            {
+                                ["CustomerName"] = row.CustomerName,
+                                ["CurrentPoints"] = row.CurrentPoints,
+                                ["IsActive"] = row.IsActive,
+                                ["CreatedAt"] = row.CreatedAt
+                            }
+                        });
+                    }
                 }
                 break;
 
             case "Feedback Report":
                 result.Columns.AddRange(new[] { "Rating", "Status", "SubmittedAt" });
 
-                foreach (var row in db.CustomerFeedbacks
-                    .Where(f => (from == null || f.SubmittedAt >= from)
-                             && (to == null || f.SubmittedAt <= to))
-                    .OrderByDescending(f => f.SubmittedAt)
-                    .Take(500)
-                    .ToList()
-                    .Select(f => new
-                    {
-                        f.Rating,
-                        f.Status,
-                        f.SubmittedAt
-                    }))
+                if (showNothing)
+                    break;
+
                 {
-                    result.Rows.Add(new ReportRow
-                    {
-                        Cells =
+                    var query = db.CustomerFeedbacks
+                        .Where(f => (from == null || f.SubmittedAt >= from)
+                                 && (to == null || f.SubmittedAt <= to));
+
+                    // NEW — branch filter
+                    if (applyBranchFilter && branchId.HasValue)
+                        query = query.Where(f => f.BranchId == branchId.Value);
+
+                    foreach (var row in query
+                        .OrderByDescending(f => f.SubmittedAt)
+                        .Take(500)
+                        .ToList()
+                        .Select(f => new
                         {
-                            ["Rating"] = row.Rating,
-                            ["Status"] = row.Status,
-                            ["SubmittedAt"] = row.SubmittedAt
-                        }
-                    });
+                            f.Rating,
+                            f.Status,
+                            f.SubmittedAt
+                        }))
+                    {
+                        result.Rows.Add(new ReportRow
+                        {
+                            Cells =
+                            {
+                                ["Rating"] = row.Rating,
+                                ["Status"] = row.Status,
+                                ["SubmittedAt"] = row.SubmittedAt
+                            }
+                        });
+                    }
                 }
                 break;
 
             case "Promotions Report":
                 result.Columns.AddRange(new[] { "PromotionCode", "StartDate", "EndDate", "IsActive" });
+
+                // NOTE — Promotions table has no BranchId column.
+                // This report is intentionally unfiltered (global promotions).
 
                 foreach (var row in db.Promotions
                     .Where(p => (from == null || p.StartDate >= from)

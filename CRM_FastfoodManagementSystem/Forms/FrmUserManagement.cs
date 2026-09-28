@@ -8,9 +8,13 @@ namespace CRM.winForms.Forms;
 public partial class FrmUserManagement : Form
 {
     private readonly IUserController _controller = new UserController();
+    private readonly IBranchController _branchController = new BranchController();
 
     private List<UserRow> _allRows = new();
     private int _currentPage = 1;
+
+    // Sentinel value used in the branch dropdown for "unassigned"
+    private const int UnassignedBranchSentinel = -1;
 
     public FrmUserManagement()
     {
@@ -25,6 +29,8 @@ public partial class FrmUserManagement : Form
         Load += (_, __) =>
         {
             InitPager();
+            InitRoleFilter();
+            InitBranchFilter();
             LoadUsers();
         };
 
@@ -35,6 +41,19 @@ public partial class FrmUserManagement : Form
             LoadUsers();
         };
         txtSearch.TextChanged += (_, __) =>
+        {
+            _currentPage = 1;
+            LoadUsers();
+        };
+
+        cmbRoleFilter.SelectedIndexChanged += (_, __) =>
+        {
+            _currentPage = 1;
+            LoadUsers();
+        };
+
+        // NEW — branch filter
+        cmbBranchFilter.SelectedIndexChanged += (_, __) =>
         {
             _currentPage = 1;
             LoadUsers();
@@ -70,6 +89,13 @@ public partial class FrmUserManagement : Form
         chkShowArchived.Font = AppTheme.FontBody;
         chkShowArchived.ForeColor = AppTheme.TextPrimary;
 
+        AppTheme.StyleLabel(lblRoleFilter);
+        AppTheme.StyleInput(cmbRoleFilter);
+
+        // NEW — branch filter styling
+        AppTheme.StyleLabel(lblBranchFilter);
+        AppTheme.StyleInput(cmbBranchFilter);
+
         AppTheme.StyleLabel(lblPageSize);
         AppTheme.StyleLabel(lblPageInfo);
         AppTheme.StyleLabel(lblShowing);
@@ -79,9 +105,18 @@ public partial class FrmUserManagement : Form
         AppTheme.StyleSecondaryButton(btnNextPage);
         AppTheme.StyleSecondaryButton(btnLastPage);
 
-        // NEW — SuperAdmin is view-only: hide Add button and Archive toggle
         btnAddUser.Visible = !UserSession.IsSuperAdmin && GetAllowedRoleCodes().Length > 0;
         chkShowArchived.Visible = !UserSession.IsSuperAdmin;
+
+        lblRoleFilter.Visible = !UserSession.IsSuperAdmin;
+        cmbRoleFilter.Visible = !UserSession.IsSuperAdmin;
+
+        // NEW — branch filter is visible only for Enterprise-plan tenant admins
+        bool showBranchFilter = UserSession.HasBranching
+                                && UserSession.IsAdmin
+                                && !UserSession.IsSuperAdmin;
+        lblBranchFilter.Visible = showBranchFilter;
+        cmbBranchFilter.Visible = showBranchFilter;
     }
 
     private static string[] GetAllowedRoleCodes()
@@ -96,6 +131,85 @@ public partial class FrmUserManagement : Form
         cmbPageSize.Items.Clear();
         cmbPageSize.Items.AddRange(new object[] { "10", "25", "50", "100", "All" });
         cmbPageSize.SelectedIndex = 1;
+    }
+
+    private void InitRoleFilter()
+    {
+        cmbRoleFilter.Items.Clear();
+        cmbRoleFilter.Items.AddRange(new object[] { "All Roles", "Manager", "Staff" });
+        cmbRoleFilter.SelectedIndex = 0;
+    }
+
+    // NEW — populate the branch filter
+    private void InitBranchFilter()
+    {
+        cmbBranchFilter.Items.Clear();
+
+        if (!UserSession.HasBranching || !UserSession.IsAdmin || UserSession.IsSuperAdmin)
+            return;
+
+        try
+        {
+            var filter = new BranchFilter
+            {
+                Search = "",
+                ShowArchived = false,
+                CompanyId = UserSession.CompanyId
+            };
+
+            var branches = _branchController.GetBranches(filter);
+
+            var items = new List<BranchFilterItem>
+            {
+                new BranchFilterItem { BranchIdFilter = null, Display = "All Branches" }
+            };
+
+            foreach (var b in branches.OrderBy(x => x.BranchCode))
+            {
+                items.Add(new BranchFilterItem
+                {
+                    BranchIdFilter = b.BranchId,
+                    Display = $"{b.BranchCode} — {b.BranchName}"
+                });
+            }
+
+            items.Add(new BranchFilterItem
+            {
+                BranchIdFilter = UnassignedBranchSentinel,
+                Display = "Unassigned"
+            });
+
+            cmbBranchFilter.DisplayMember = nameof(BranchFilterItem.Display);
+            cmbBranchFilter.ValueMember = nameof(BranchFilterItem.BranchIdFilter);
+            cmbBranchFilter.DataSource = items;
+            cmbBranchFilter.SelectedIndex = 0;
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show("Failed to load branches: " + ex.Message, "Error");
+        }
+    }
+
+    private string GetSelectedRoleCode()
+    {
+        var pick = cmbRoleFilter.SelectedItem?.ToString() ?? "All Roles";
+        return pick switch
+        {
+            "Manager" => "MANAGER",
+            "Staff" => "STAFF",
+            _ => "All"
+        };
+    }
+
+    // NEW — read selected branch filter value
+    private int? GetSelectedBranchFilter()
+    {
+        if (!cmbBranchFilter.Visible) return null;
+
+        if (cmbBranchFilter.SelectedItem is BranchFilterItem item)
+            return item.BranchIdFilter;
+
+        return null;
     }
 
     private void LoadUsers()
@@ -117,9 +231,13 @@ public partial class FrmUserManagement : Form
                 IsAdmin = UserSession.IsAdmin,
                 CurrentUserId = UserSession.UserId,
 
-                // NEW — routing / mode
                 CompanyId = UserSession.CompanyId,
-                ShowAllTenants = UserSession.IsSuperAdmin
+                ShowAllTenants = UserSession.IsSuperAdmin,
+
+                RoleCodeFilter = UserSession.IsSuperAdmin ? "All" : GetSelectedRoleCode(),
+
+                // NEW — branch filter
+                BranchIdFilter = UserSession.IsSuperAdmin ? null : GetSelectedBranchFilter()
             };
 
             _allRows = _controller.GetUsers(filter);
@@ -204,7 +322,6 @@ public partial class FrmUserManagement : Form
 
     private void BuildActionColumns()
     {
-        // First, strip any action columns that might exist from a previous render
         for (int i = gridUsers.Columns.Count - 1; i >= 0; i--)
         {
             var col = gridUsers.Columns[i];
@@ -212,7 +329,6 @@ public partial class FrmUserManagement : Form
                 gridUsers.Columns.RemoveAt(i);
         }
 
-        // NEW — SuperAdmin is view-only; no action columns
         if (UserSession.IsSuperAdmin)
             return;
 
@@ -246,7 +362,6 @@ public partial class FrmUserManagement : Form
 
         if (grid.Columns.Contains("UserId")) grid.Columns["UserId"].Visible = false;
 
-        // NEW — SuperAdmin sees the tenant column
         if (UserSession.IsSuperAdmin && grid.Columns.Contains("TenantName"))
         {
             SetColumnFixed("TenantName", "Tenant", 180, DataGridViewContentAlignment.MiddleLeft);
@@ -457,5 +572,12 @@ public partial class FrmUserManagement : Form
             lblStatus.Text = "User added.";
             LoadUsers();
         }
+    }
+
+    // NEW — inner class for the branch dropdown data source
+    private sealed class BranchFilterItem
+    {
+        public int? BranchIdFilter { get; set; }
+        public string Display { get; set; } = "";
     }
 }

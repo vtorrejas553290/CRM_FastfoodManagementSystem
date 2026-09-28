@@ -16,5 +16,9 @@ public class CustomerFeedback
 
     public DateTime SubmittedAt { get; set; } = DateTime.UtcNow;
 
+    // NEW — which branch this feedback belongs to
+    public int? BranchId { get; set; }
+    public Branch? Branch { get; set; }
+
     public Customer? Customer { get; set; }
 }

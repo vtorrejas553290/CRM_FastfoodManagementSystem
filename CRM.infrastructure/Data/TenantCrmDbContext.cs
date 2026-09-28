@@ -81,7 +81,6 @@ public class TenantCrmDbContext : DbContext
                 .HasForeignKey(x => x.RoleId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // NEW — branch assignment (nullable; admins have no branch)
             entity.HasOne(x => x.Branch)
                 .WithMany()
                 .HasForeignKey(x => x.BranchId)
@@ -124,6 +123,12 @@ public class TenantCrmDbContext : DbContext
 
             entity.HasIndex(x => x.CustomerCode)
                 .IsUnique();
+
+            // NEW — branch
+            entity.HasOne(x => x.Branch)
+                .WithMany()
+                .HasForeignKey(x => x.BranchId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         // ==================== TERMS & CONDITIONS ====================
@@ -185,6 +190,12 @@ public class TenantCrmDbContext : DbContext
                 .WithMany(x => x.Feedbacks)
                 .HasForeignKey(x => x.CustomerId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            // NEW — branch
+            entity.HasOne(x => x.Branch)
+                .WithMany()
+                .HasForeignKey(x => x.BranchId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         // ==================== PRODUCT & INVENTORY ====================
@@ -241,6 +252,12 @@ public class TenantCrmDbContext : DbContext
                 .WithMany(x => x.Orders)
                 .HasForeignKey(x => x.CustomerId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            // NEW — branch
+            entity.HasOne(x => x.Branch)
+                .WithMany()
+                .HasForeignKey(x => x.BranchId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         builder.Entity<OrderItem>(entity =>
@@ -272,6 +289,12 @@ public class TenantCrmDbContext : DbContext
                 .WithOne(x => x.Transaction)
                 .HasForeignKey<Transaction>(x => x.OrderId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            // NEW — branch
+            entity.HasOne(x => x.Branch)
+                .WithMany()
+                .HasForeignKey(x => x.BranchId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         // ==================== ACTIVITY LOGS ====================
@@ -291,6 +314,12 @@ public class TenantCrmDbContext : DbContext
             entity.HasOne(x => x.User)
                 .WithMany()
                 .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            // NEW — branch
+            entity.HasOne(x => x.Branch)
+                .WithMany()
+                .HasForeignKey(x => x.BranchId)
                 .OnDelete(DeleteBehavior.SetNull);
         });
 
@@ -472,6 +501,12 @@ public class TenantCrmDbContext : DbContext
             entity.HasOne(x => x.AssignedToUser)
                 .WithMany()
                 .HasForeignKey(x => x.AssignedToUserId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            // NEW — branch
+            entity.HasOne(x => x.Branch)
+                .WithMany()
+                .HasForeignKey(x => x.BranchId)
                 .OnDelete(DeleteBehavior.SetNull);
         });
 

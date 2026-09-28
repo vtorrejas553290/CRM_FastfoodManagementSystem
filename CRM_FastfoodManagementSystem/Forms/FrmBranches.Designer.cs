@@ -14,7 +14,6 @@
         private System.Windows.Forms.Label lblStatus;
         private System.Windows.Forms.DataGridView gridBranches;
 
-        // Pagination bar (bottom)
         private System.Windows.Forms.Panel pnlPager;
         private System.Windows.Forms.TableLayoutPanel tblPager;
         private System.Windows.Forms.FlowLayoutPanel flowPageSize;
@@ -80,7 +79,6 @@
             this.pnlTop.BackColor = System.Drawing.Color.White;
             this.pnlTop.Padding = new System.Windows.Forms.Padding(16, 14, 16, 8);
 
-            // tblHeader — 2 columns × 2 rows
             this.tblHeader.Dock = System.Windows.Forms.DockStyle.Top;
             this.tblHeader.Height = 74;
             this.tblHeader.ColumnCount = 2;
@@ -98,7 +96,6 @@
             this.tblHeader.RowStyles.Add(
                 new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 30F));
 
-            // ---- Row 0, col 0: flowSearch ----
             this.flowSearch.AutoSize = true;
             this.flowSearch.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
             this.flowSearch.FlowDirection = System.Windows.Forms.FlowDirection.LeftToRight;
@@ -113,13 +110,11 @@
 
             this.flowSearch.Controls.Add(this.txtSearch);
 
-            // ---- Row 1, col 0: chkShowArchived ----
             this.chkShowArchived.AutoSize = true;
             this.chkShowArchived.Margin = new System.Windows.Forms.Padding(0, 6, 0, 0);
             this.chkShowArchived.Text = "Show archived";
             this.chkShowArchived.UseVisualStyleBackColor = true;
 
-            // ---- Row 0, col 1: flowButtons ----
             this.flowButtons.AutoSize = true;
             this.flowButtons.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
             this.flowButtons.FlowDirection = System.Windows.Forms.FlowDirection.LeftToRight;
@@ -142,17 +137,11 @@
 
             this.pnlTop.Controls.Add(this.tblHeader);
 
-            // ============================================================
-            // lblStatus
-            // ============================================================
             this.lblStatus.Dock = System.Windows.Forms.DockStyle.Bottom;
             this.lblStatus.Height = 32;
             this.lblStatus.Padding = new System.Windows.Forms.Padding(16, 0, 0, 0);
             this.lblStatus.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
 
-            // ============================================================
-            // gridBranches
-            // ============================================================
             this.gridBranches.Dock = System.Windows.Forms.DockStyle.Fill;
 
             var pnlGridWrap = new System.Windows.Forms.Panel();
@@ -161,9 +150,6 @@
             pnlGridWrap.BackColor = System.Drawing.Color.FromArgb(248, 249, 250);
             pnlGridWrap.Controls.Add(this.gridBranches);
 
-            // ============================================================
-            // pnlPager
-            // ============================================================
             this.pnlPager.Dock = System.Windows.Forms.DockStyle.Bottom;
             this.pnlPager.Height = 52;
             this.pnlPager.BackColor = System.Drawing.Color.White;
@@ -276,9 +262,6 @@
 
             this.pnlPager.Controls.Add(this.tblPager);
 
-            // ============================================================
-            // FrmBranches
-            // ============================================================
             this.ClientSize = new System.Drawing.Size(1150, 660);
             this.Controls.Add(pnlGridWrap);
             this.Controls.Add(this.pnlPager);

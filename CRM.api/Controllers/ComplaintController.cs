@@ -23,6 +23,18 @@ public class ComplaintController : IComplaintController
             .AsNoTracking()
             .AsQueryable();
 
+        // NEW — branch filter.
+        // Admin/SuperAdmin → see all branches.
+        // Manager/Staff with a branch → only that branch's complaints.
+        // Manager/Staff without a branch → nothing.
+        if (!AppServices.CurrentUserIsAdmin)
+        {
+            if (!AppServices.CurrentBranchId.HasValue)
+                return new List<ComplaintRow>();
+
+            query = query.Where(x => x.BranchId == AppServices.CurrentBranchId.Value);
+        }
+
         // Archived filter
         query = showArchived
             ? query.Where(x => x.IsArchived)

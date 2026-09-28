@@ -19,6 +19,18 @@ public class ActivityLogController : IActivityLogController
 
         var query = db.ActivityLogs.AsNoTracking().AsQueryable();
 
+        // NEW — branch filter.
+        // Admin/SuperAdmin → see all branches.
+        // Manager/Staff with a branch → only that branch's activity.
+        // Manager/Staff without a branch → nothing.
+        if (!AppServices.CurrentUserIsAdmin)
+        {
+            if (!AppServices.CurrentBranchId.HasValue)
+                return new List<ActivityLogRow>();
+
+            query = query.Where(x => x.BranchId == AppServices.CurrentBranchId.Value);
+        }
+
         if (action != "All")
             query = query.Where(x => x.ActionType == action);
 

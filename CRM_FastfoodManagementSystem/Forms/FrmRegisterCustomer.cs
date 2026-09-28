@@ -305,7 +305,8 @@ public partial class FrmRegisterCustomer : Form
                     Address = txtAddress.Text.Trim(),
                     Birthday = dtpBirthday.Value.Date,
                     IsActive = true,
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = DateTime.UtcNow,
+                    BranchId = UserSession.BranchId    // NEW — stamp creator's branch
                 };
 
                 db.Customers.Add(customer);

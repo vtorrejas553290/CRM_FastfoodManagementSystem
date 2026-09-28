@@ -32,9 +32,9 @@ public static class ActivityLogger
                 EntityName = entityName,
                 EntityId = entityId,
                 Description = description,
-                PerformedAt = DateTime.UtcNow
+                PerformedAt = DateTime.UtcNow,
+                BranchId = UserSession.BranchId    // NEW — stamp creator's branch
             });
-
             db.SaveChanges();
         }
         catch

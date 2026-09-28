@@ -8,6 +8,10 @@
         private System.Windows.Forms.TableLayoutPanel tblHeader;
         private System.Windows.Forms.FlowLayoutPanel flowSearch;
         private System.Windows.Forms.TextBox txtSearch;
+        private System.Windows.Forms.Label lblRoleFilter;
+        private System.Windows.Forms.ComboBox cmbRoleFilter;
+        private System.Windows.Forms.Label lblBranchFilter;      // NEW
+        private System.Windows.Forms.ComboBox cmbBranchFilter;  // NEW
         private System.Windows.Forms.CheckBox chkShowArchived;
         private System.Windows.Forms.FlowLayoutPanel flowButtons;
         private System.Windows.Forms.Button btnAddUser;
@@ -42,6 +46,10 @@
             this.tblHeader = new System.Windows.Forms.TableLayoutPanel();
             this.flowSearch = new System.Windows.Forms.FlowLayoutPanel();
             this.txtSearch = new System.Windows.Forms.TextBox();
+            this.lblRoleFilter = new System.Windows.Forms.Label();
+            this.cmbRoleFilter = new System.Windows.Forms.ComboBox();
+            this.lblBranchFilter = new System.Windows.Forms.Label();      // NEW
+            this.cmbBranchFilter = new System.Windows.Forms.ComboBox();  // NEW
             this.chkShowArchived = new System.Windows.Forms.CheckBox();
             this.flowButtons = new System.Windows.Forms.FlowLayoutPanel();
             this.btnAddUser = new System.Windows.Forms.Button();
@@ -80,9 +88,6 @@
             this.pnlTop.BackColor = System.Drawing.Color.White;
             this.pnlTop.Padding = new System.Windows.Forms.Padding(16, 14, 16, 8);
 
-            // tblHeader — 2 columns × 2 rows
-            //   Row 0: Search | (right: Add User)
-            //   Row 1: Show archived
             this.tblHeader.Dock = System.Windows.Forms.DockStyle.Top;
             this.tblHeader.Height = 74;
             this.tblHeader.ColumnCount = 2;
@@ -109,11 +114,35 @@
             this.flowSearch.Margin = new System.Windows.Forms.Padding(0, 0, 16, 0);
             this.flowSearch.Padding = new System.Windows.Forms.Padding(0);
 
-            this.txtSearch.Width = 420;
-            this.txtSearch.Margin = new System.Windows.Forms.Padding(0);
+            this.txtSearch.Width = 260;
+            this.txtSearch.Margin = new System.Windows.Forms.Padding(0, 0, 12, 0);
             this.txtSearch.PlaceholderText = "Search by username or name...";
 
+            // Role filter
+            this.lblRoleFilter.AutoSize = true;
+            this.lblRoleFilter.Margin = new System.Windows.Forms.Padding(0, 6, 4, 0);
+            this.lblRoleFilter.Text = "Role:";
+            this.lblRoleFilter.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+
+            this.cmbRoleFilter.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.cmbRoleFilter.Width = 120;
+            this.cmbRoleFilter.Margin = new System.Windows.Forms.Padding(0, 0, 12, 0);
+
+            // Branch filter  (NEW)
+            this.lblBranchFilter.AutoSize = true;
+            this.lblBranchFilter.Margin = new System.Windows.Forms.Padding(0, 6, 4, 0);
+            this.lblBranchFilter.Text = "Branch:";
+            this.lblBranchFilter.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+
+            this.cmbBranchFilter.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.cmbBranchFilter.Width = 200;
+            this.cmbBranchFilter.Margin = new System.Windows.Forms.Padding(0);
+
             this.flowSearch.Controls.Add(this.txtSearch);
+            this.flowSearch.Controls.Add(this.lblRoleFilter);
+            this.flowSearch.Controls.Add(this.cmbRoleFilter);
+            this.flowSearch.Controls.Add(this.lblBranchFilter);
+            this.flowSearch.Controls.Add(this.cmbBranchFilter);
 
             // ---- Row 1, col 0: chkShowArchived ----
             this.chkShowArchived.AutoSize = true;
@@ -121,7 +150,7 @@
             this.chkShowArchived.Text = "Show archived";
             this.chkShowArchived.UseVisualStyleBackColor = true;
 
-            // ---- Row 0, col 1: flowButtons (right-aligned) ----
+            // ---- Row 0, col 1: flowButtons ----
             this.flowButtons.AutoSize = true;
             this.flowButtons.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
             this.flowButtons.FlowDirection = System.Windows.Forms.FlowDirection.LeftToRight;

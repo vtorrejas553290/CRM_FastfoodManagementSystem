@@ -20,5 +20,9 @@ public class ActivityLog
 
     public DateTime PerformedAt { get; set; } = DateTime.UtcNow;
 
+    // NEW — which branch this activity belongs to
+    public int? BranchId { get; set; }
+    public Branch? Branch { get; set; }
+
     public User? User { get; set; }
 }

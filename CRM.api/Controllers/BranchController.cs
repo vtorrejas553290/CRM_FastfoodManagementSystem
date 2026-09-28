@@ -25,12 +25,54 @@ public class BranchController : IBranchController
         else
             query = query.Where(x => x.IsActive);
 
-        return query
+        // Fetch branches first (with the filter), then fill manager / staff info
+        // in a second query so we don't need a complex SQL join.
+        var branches = query
             .Where(x =>
                 string.IsNullOrWhiteSpace(search) ||
                 x.BranchCode.ToLower().Contains(search) ||
                 x.BranchName.ToLower().Contains(search))
             .OrderBy(x => x.BranchCode)
+            .Select(x => new
+            {
+                x.BranchId,
+                x.BranchCode,
+                x.BranchName,
+                x.Address,
+                x.ContactNumber,
+                x.IsActive,
+                x.CreatedAt
+            })
+            .ToList();
+
+        var branchIds = branches.Select(b => b.BranchId).ToList();
+
+        // One query for all assigned users in these branches.
+        var assignedUsers = db.Users
+            .Include(u => u.Role)
+            .AsNoTracking()
+            .Where(u => u.BranchId != null && branchIds.Contains(u.BranchId.Value))
+            .Select(u => new
+            {
+                u.UserId,
+                u.BranchId,
+                u.FullName,
+                RoleCode = u.Role != null ? u.Role.RoleCode : ""
+            })
+            .ToList();
+
+        // Group by branch for the grid.
+        var managerByBranch = assignedUsers
+            .Where(u => u.RoleCode == "MANAGER" && u.BranchId.HasValue)
+            .GroupBy(u => u.BranchId!.Value)
+            .ToDictionary(g => g.Key, g => g.First().FullName);
+
+        var staffCountByBranch = assignedUsers
+            .Where(u => u.RoleCode == "STAFF" && u.BranchId.HasValue)
+            .GroupBy(u => u.BranchId!.Value)
+            .ToDictionary(g => g.Key, g => g.Count());
+
+        return branches
             .Select(x => new BranchRow
             {
                 BranchId = x.BranchId,
@@ -39,7 +81,13 @@ public class BranchController : IBranchController
                 Address = x.Address ?? "",
                 ContactNumber = x.ContactNumber ?? "",
                 Status = x.IsActive ? "Active" : "Archived",
-                CreatedAt = x.CreatedAt
+                CreatedAt = x.CreatedAt,
+                ManagerName = managerByBranch.TryGetValue(x.BranchId, out var mgrName)
+                              ? mgrName
+                              : "—",
+                StaffCount = staffCountByBranch.TryGetValue(x.BranchId, out var cnt)
+                              ? cnt
+                              : 0
             })
             .ToList();
     }
@@ -95,7 +143,6 @@ public class BranchController : IBranchController
         {
             using var db = AppServices.CreateTenantContext(companyId);
 
-            // Unique BranchCode check
             var exists = db.Branches.Any(x => x.BranchCode == branchCode);
             if (exists)
             {
@@ -161,7 +208,6 @@ public class BranchController : IBranchController
                 return false;
             }
 
-            // Unique BranchCode check (excluding self)
             var dup = db.Branches.Any(x => x.BranchCode == branchCode && x.BranchId != branchId);
             if (dup)
             {
@@ -205,9 +251,6 @@ public class BranchController : IBranchController
                 return false;
             }
 
-            // Optional guard: don't let archiving a branch orphan users who
-            // are currently assigned to it without warning. We allow it (FK is
-            // SET NULL), but you could block here if desired.
             branch.IsActive = isActive;
             db.SaveChanges();
 

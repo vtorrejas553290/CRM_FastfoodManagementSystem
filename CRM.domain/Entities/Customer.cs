@@ -6,7 +6,6 @@ public class Customer
 
     public string CustomerCode { get; set; } = string.Empty;
 
-    // Kept for backward compatibility — auto-computed from First + Middle + Last
     public string CustomerName { get; set; } = string.Empty;
 
     public string FirstName { get; set; } = string.Empty;
@@ -27,8 +26,11 @@ public class Customer
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-    // Loyalty points balance
     public int CurrentPoints { get; set; } = 0;
+
+    // NEW — which branch registered this customer
+    public int? BranchId { get; set; }
+    public Branch? Branch { get; set; }
 
     public ICollection<CustomerFeedback> Feedbacks { get; set; } = new List<CustomerFeedback>();
     public ICollection<TermsAcceptance> TermsAcceptances { get; set; } = new List<TermsAcceptance>();

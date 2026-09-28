@@ -49,6 +49,9 @@ public partial class FrmBranches : Form
         btnPrevPage.Click += (_, __) => GoToPage(_currentPage - 1);
         btnNextPage.Click += (_, __) => GoToPage(_currentPage + 1);
         btnLastPage.Click += (_, __) => GoToPage(TotalPages);
+
+        // NEW — double-click anywhere on a row to open the branch detail dialog
+        gridBranches.CellDoubleClick += GridBranches_CellDoubleClick;
     }
 
     private void ApplyTheme()
@@ -82,7 +85,7 @@ public partial class FrmBranches : Form
     {
         cmbPageSize.Items.Clear();
         cmbPageSize.Items.AddRange(new object[] { "10", "25", "50", "100", "All" });
-        cmbPageSize.SelectedIndex = 1;   // default 25
+        cmbPageSize.SelectedIndex = 1;
     }
 
     private void LoadBranches()
@@ -215,13 +218,15 @@ public partial class FrmBranches : Form
 
         if (grid.Columns.Contains("BranchId")) grid.Columns["BranchId"].Visible = false;
 
-        SetColumnFixed("BranchCode", "Code", 120, DataGridViewContentAlignment.MiddleLeft);
-        SetColumnFixed("Status", "Status", 110, DataGridViewContentAlignment.MiddleCenter);
-        SetColumnFixed("ContactNumber", "Contact", 150, DataGridViewContentAlignment.MiddleLeft);
-        SetColumnFixed("CreatedAt", "Created", 130, DataGridViewContentAlignment.MiddleCenter);
+        SetColumnFixed("BranchCode", "Code", 100, DataGridViewContentAlignment.MiddleLeft);
+        SetColumnFixed("Status", "Status", 90, DataGridViewContentAlignment.MiddleCenter);
+        SetColumnFixed("ContactNumber", "Contact", 130, DataGridViewContentAlignment.MiddleLeft);
+        SetColumnFixed("ManagerName", "Manager", 160, DataGridViewContentAlignment.MiddleLeft);   // NEW
+        SetColumnFixed("StaffCount", "Staff", 70, DataGridViewContentAlignment.MiddleCenter);     // NEW
+        SetColumnFixed("CreatedAt", "Created", 110, DataGridViewContentAlignment.MiddleCenter);
 
-        SetColumnFill("BranchName", "Branch Name", 60, 200, DataGridViewContentAlignment.MiddleLeft);
-        SetColumnFill("Address", "Address", 60, 200, DataGridViewContentAlignment.MiddleLeft);
+        SetColumnFill("BranchName", "Branch Name", 60, 180, DataGridViewContentAlignment.MiddleLeft);
+        SetColumnFill("Address", "Address", 60, 180, DataGridViewContentAlignment.MiddleLeft);
 
         if (grid.Columns.Contains("CreatedAt"))
             grid.Columns["CreatedAt"].DefaultCellStyle.Format = "yyyy-MM-dd";
@@ -289,7 +294,7 @@ public partial class FrmBranches : Form
     }
 
     // ============================================================
-    //  ACTION HANDLERS
+    //  ROW CLICK — action buttons (Edit / Archive / Unarchive)
     // ============================================================
 
     private void GridBranches_CellContentClick(object? sender, DataGridViewCellEventArgs e)
@@ -304,6 +309,22 @@ public partial class FrmBranches : Form
             HandleArchive(e.RowIndex);
         else if (column.Name == "colUnarchive")
             HandleUnarchive(e.RowIndex);
+    }
+
+    // NEW — double-click anywhere opens the detail dialog
+    private void GridBranches_CellDoubleClick(object? sender, DataGridViewCellEventArgs e)
+    {
+        if (e.RowIndex < 0) return;
+
+        // Ignore double-clicks on action buttons (they already handle click)
+        var col = gridBranches.Columns[e.ColumnIndex];
+        if (col is DataGridViewButtonColumn) return;
+
+        var id = GetBranchIdAtRow(e.RowIndex);
+        if (id is null) return;
+
+        using var dlg = new FrmBranchDetail(id.Value);
+        dlg.ShowDialog(this);
     }
 
     private int? GetBranchIdAtRow(int rowIndex)

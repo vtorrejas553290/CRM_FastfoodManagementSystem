@@ -21,9 +21,20 @@ public class RetentionController : IRetentionController
         var cutoffAtRisk = now.AddDays(-AtRiskDays);
         var cutoffDormant = now.AddDays(-DormantDays);
 
-        var raw = db.Customers
+        // NEW — branch filter base query
+        var baseQuery = db.Customers
             .AsNoTracking()
-            .Where(c => c.IsActive)
+            .Where(c => c.IsActive);
+
+        if (!AppServices.CurrentUserIsAdmin)
+        {
+            if (!AppServices.CurrentBranchId.HasValue)
+                return new List<RetentionRow>();
+
+            baseQuery = baseQuery.Where(c => c.BranchId == AppServices.CurrentBranchId.Value);
+        }
+
+        var raw = baseQuery
             .Where(c => string.IsNullOrWhiteSpace(search) ||
                         c.CustomerCode.ToLower().Contains(search) ||
                         c.CustomerName.ToLower().Contains(search))

@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using CRM.infrastructure;
+using System.Linq;
 
 namespace CRM.winForms.Forms;
 
@@ -42,7 +43,6 @@ public partial class FrmMain : Form
         lblWelcome.Text = $"{UserSession.FullName}\n{UserSession.RoleName}";
         BuildMenu();
 
-        // Initial landing page, gated by plan flag.
         if (UserSession.IsAdmin && UserSession.HasBusinessIntelligence)
         {
             ShowForm(new FrmBusinessIntelligence(), "Business Intelligence",
@@ -75,15 +75,11 @@ public partial class FrmMain : Form
             SetActiveButton(btn);
     }
 
-    // =================================================================
-    // BuildMenu — every block gated by plan flag AND role.
-    // =================================================================
     private void BuildMenu()
     {
         pnlMenu.Controls.Clear();
         _activeButton = null;
 
-        // ============ ADMIN — Business Intelligence FIRST (if plan allows) ============
         if (UserSession.IsAdmin && UserSession.HasBusinessIntelligence)
         {
             AddMenuButton("Business Intelligence",
@@ -91,14 +87,12 @@ public partial class FrmMain : Form
                     form => HookNavigation((FrmBusinessIntelligence)form)));
         }
 
-        // ============ MANAGER — Dashboard FIRST ============
         if (UserSession.IsManager)
         {
             AddMenuButton("Dashboard",
                 () => ShowForm(new FrmManagerDashboard(), "Dashboard"));
         }
 
-        // ============ SUPERADMIN & ADMIN — Data-collection admin modules ============
         if (UserSession.HasDataCollection
             && (UserSession.IsSuperAdmin || UserSession.IsAdmin))
         {
@@ -109,7 +103,6 @@ public partial class FrmMain : Form
                 () => ShowForm(new FrmUserManagement(), "User Management"));
         }
 
-        // ============ ADMIN & MANAGER — Data-collection operations ============
         if (UserSession.HasDataCollection
             && (UserSession.IsAdmin || UserSession.IsManager))
         {
@@ -127,7 +120,6 @@ public partial class FrmMain : Form
                 () => ShowForm(new FrmPromotions(), "Promotions"));
         }
 
-        // ============ ADMIN & MANAGER — Actions modules ============
         if (UserSession.HasActions
             && (UserSession.IsAdmin || UserSession.IsManager))
         {
@@ -135,7 +127,6 @@ public partial class FrmMain : Form
                 () => ShowForm(new FrmCustomerRetention(), "Customer Retention"));
         }
 
-        // ============ ADMIN & MANAGER — Main-transaction operations ============
         if (UserSession.HasMainTransaction
             && (UserSession.IsAdmin || UserSession.IsManager))
         {
@@ -152,14 +143,12 @@ public partial class FrmMain : Form
                 () => ShowForm(new FrmReports(), "Reports"));
         }
 
-        // ============ STAFF — Main-transaction floor operations ============
         if (UserSession.IsStaff && UserSession.HasMainTransaction)
         {
             AddMenuButton("Order Management",
                 () => ShowForm(new FrmOrderManagement(), "Order Management"));
         }
 
-        // ============ STAFF — Data-collection operations ============
         if (UserSession.IsStaff && UserSession.HasDataCollection)
         {
             AddMenuButton("Register Customer",
@@ -173,7 +162,6 @@ public partial class FrmMain : Form
                 () => ShowForm(new FrmComplaints(), "Complaints"));
         }
 
-        // ============ NEW — ADMIN — Branching (Enterprise plan, tenant end only) ============
         if (UserSession.HasBranching
             && UserSession.IsAdmin
             && !UserSession.IsSuperAdmin)
@@ -182,7 +170,6 @@ public partial class FrmMain : Form
                 () => ShowForm(new FrmBranches(), "Branch Management"));
         }
 
-        // ============ SUPERADMIN & ADMIN — Activity Logs LAST ============
         if (UserSession.IsSuperAdmin || UserSession.IsAdmin)
         {
             AddMenuButton("Activity Logs",
@@ -254,9 +241,6 @@ public partial class FrmMain : Form
         bi.NavigateRequested += pageKey => NavigateTo(pageKey);
     }
 
-    // =================================================================
-    // NavigateTo — same switch, but each case guarded by plan flag.
-    // =================================================================
     private void NavigateTo(string pageKey)
     {
         switch (pageKey)
@@ -367,6 +351,12 @@ public partial class FrmMain : Form
                 $"{UserSession.Username} logged out");
 
             UserSession.Clear();
+
+            // NEW — clear all ambient contexts so the next login starts fresh
+            AppServices.CurrentCompanyId = 0;
+            AppServices.CurrentBranchId = null;
+            AppServices.CurrentUserIsAdmin = false;
+
             Close();
         }
     }

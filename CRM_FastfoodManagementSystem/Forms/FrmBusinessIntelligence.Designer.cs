@@ -9,6 +9,8 @@
         private System.Windows.Forms.TableLayoutPanel tblHeader;
         private System.Windows.Forms.Label lblHeaderSubtitle;
         private System.Windows.Forms.FlowLayoutPanel flowHeaderFilters;
+        private System.Windows.Forms.Label lblBranchFilter;      // NEW
+        private System.Windows.Forms.ComboBox cmbBranchFilter;  // NEW
         private System.Windows.Forms.Label lblDateRange;
         private System.Windows.Forms.ComboBox cmbDateRange;
         private System.Windows.Forms.Label lblFromDate;
@@ -83,6 +85,8 @@
             this.tblHeader = new System.Windows.Forms.TableLayoutPanel();
             this.lblHeaderSubtitle = new System.Windows.Forms.Label();
             this.flowHeaderFilters = new System.Windows.Forms.FlowLayoutPanel();
+            this.lblBranchFilter = new System.Windows.Forms.Label();      // NEW
+            this.cmbBranchFilter = new System.Windows.Forms.ComboBox();  // NEW
             this.lblDateRange = new System.Windows.Forms.Label();
             this.cmbDateRange = new System.Windows.Forms.ComboBox();
             this.lblFromDate = new System.Windows.Forms.Label();
@@ -154,9 +158,7 @@
             this.SuspendLayout();
 
             // ============================================================
-            // pnlHeader — hosts a two-column TableLayoutPanel
-            //   Col 0 (fill) : subtitle
-            //   Col 1 (auto) : the filters FlowLayoutPanel
+            // pnlHeader
             // ============================================================
             this.pnlHeader.Dock = System.Windows.Forms.DockStyle.Top;
             this.pnlHeader.Height = 96;
@@ -179,7 +181,7 @@
             this.tblHeader.RowStyles.Add(
                 new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 100F));
 
-            // lblHeaderSubtitle — column 0, left
+            // lblHeaderSubtitle
             this.lblHeaderSubtitle.AutoSize = true;
             this.lblHeaderSubtitle.Font = new System.Drawing.Font("Segoe UI", 10F);
             this.lblHeaderSubtitle.ForeColor = System.Drawing.Color.FromArgb(110, 120, 135);
@@ -188,7 +190,7 @@
             this.lblHeaderSubtitle.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
             this.lblHeaderSubtitle.Anchor = System.Windows.Forms.AnchorStyles.Left;
 
-            // flowHeaderFilters — column 1, right, auto-sized
+            // flowHeaderFilters
             this.flowHeaderFilters.AutoSize = true;
             this.flowHeaderFilters.AutoSizeMode = System.Windows.Forms.AutoSizeMode.GrowAndShrink;
             this.flowHeaderFilters.FlowDirection = System.Windows.Forms.FlowDirection.LeftToRight;
@@ -197,6 +199,19 @@
             this.flowHeaderFilters.Margin = new System.Windows.Forms.Padding(0);
             this.flowHeaderFilters.BackColor = System.Drawing.Color.Transparent;
             this.flowHeaderFilters.Dock = System.Windows.Forms.DockStyle.Right;
+
+            // lblBranchFilter  (NEW)
+            this.lblBranchFilter.AutoSize = true;
+            this.lblBranchFilter.Font = new System.Drawing.Font("Segoe UI", 8F, System.Drawing.FontStyle.Bold);
+            this.lblBranchFilter.ForeColor = System.Drawing.Color.FromArgb(90, 100, 115);
+            this.lblBranchFilter.Margin = new System.Windows.Forms.Padding(0, 12, 6, 0);
+            this.lblBranchFilter.Text = "BRANCH";
+
+            // cmbBranchFilter  (NEW)
+            this.cmbBranchFilter.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.cmbBranchFilter.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.cmbBranchFilter.Size = new System.Drawing.Size(200, 29);
+            this.cmbBranchFilter.Margin = new System.Windows.Forms.Padding(0, 4, 16, 0);
 
             // lblDateRange
             this.lblDateRange.AutoSize = true;
@@ -235,6 +250,9 @@
             this.dtpToDate.Size = new System.Drawing.Size(120, 29);
             this.dtpToDate.Margin = new System.Windows.Forms.Padding(0, 4, 0, 0);
 
+            // NEW — Branch controls first
+            this.flowHeaderFilters.Controls.Add(this.lblBranchFilter);
+            this.flowHeaderFilters.Controls.Add(this.cmbBranchFilter);
             this.flowHeaderFilters.Controls.Add(this.lblDateRange);
             this.flowHeaderFilters.Controls.Add(this.cmbDateRange);
             this.flowHeaderFilters.Controls.Add(this.lblFromDate);

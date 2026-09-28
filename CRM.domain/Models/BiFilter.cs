@@ -16,4 +16,13 @@ public class BiFilter
 
     /// <summary>"now" passed in so the controller stays pure.</summary>
     public DateTime Now { get; set; } = DateTime.UtcNow;
+
+    // ---- NEW — branch filter ----
+    /// <summary>
+    /// When set (positive), all BI queries that have a BranchId column
+    /// filter to this branch. null = show all branches.
+    /// Queries on tables without a BranchId (Promotions, Inventories) are
+    /// unaffected.
+    /// </summary>
+    public int? BranchIdFilter { get; set; } = null;
 }

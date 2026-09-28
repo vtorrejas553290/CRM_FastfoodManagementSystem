@@ -955,7 +955,8 @@ public partial class FrmOrderManagement : Form
                 PointsEarned = pointsEarned,
                 TotalAmount = total,
                 Status = "Paid",
-                OrderDate = DateTime.UtcNow
+                OrderDate = DateTime.UtcNow,
+                BranchId = UserSession.BranchId      // NEW — stamp creator's branch
             };
 
             db.Orders.Add(order);
@@ -1023,7 +1024,8 @@ public partial class FrmOrderManagement : Form
                 AmountPaid = paid,
                 ChangeDue = change,
                 ReferenceNumber = method == "GCash" ? reference : null,
-                PaidAt = DateTime.UtcNow
+                PaidAt = DateTime.UtcNow,
+                BranchId = UserSession.BranchId      // NEW — stamp creator's branch
             });
 
             db.SaveChanges();
