@@ -25,7 +25,7 @@ public class UserController : IUserController
         var result = new List<UserRow>();
         var search = (filter.Search ?? "").Trim().ToLower();
 
-        List<(int CompanyId, string CompanyName, string ServerName, string DbName)> tenants;
+        List<(int CompanyId, string CompanyName)> tenants;
 
         using (var master = AppServices.CreateMasterContext())
         {
@@ -37,13 +37,11 @@ public class UserController : IUserController
                 select new
                 {
                     c.CompanyId,
-                    c.CompanyName,
-                    d.ServerName,
-                    d.DatabaseName
+                    c.CompanyName
                 })
                 .AsNoTracking()
                 .ToList()
-                .Select(x => (x.CompanyId, x.CompanyName, x.ServerName, x.DatabaseName))
+                .Select(x => (x.CompanyId, x.CompanyName))
                 .ToList();
         }
 
@@ -51,14 +49,10 @@ public class UserController : IUserController
         {
             try
             {
-                var cs = $"Server={t.ServerName};Database={t.DbName};Trusted_Connection=True;" +
-                         "TrustServerCertificate=True;MultipleActiveResultSets=True;";
-
-                var options = new DbContextOptionsBuilder<TenantCrmDbContext>()
-                    .UseSqlServer(cs)
-                    .Options;
-
-                using var db = new TenantCrmDbContext(options);
+                // Let AppServices build the correct connection string —
+                // it already knows how to switch between LocalDB (Trusted_Connection)
+                // and cloud (SQL auth via TenantCredentials_Cloud).
+                using var db = AppServices.CreateTenantContext(t.CompanyId);
 
                 var adminRows = db.Users
                     .Include(x => x.Role)
@@ -116,17 +110,12 @@ public class UserController : IUserController
         else
             return new List<UserRow>();
 
-        // Apply role filter (ignored when "All")
         if (roleFilter != "All" &&
             (roleFilter == "MANAGER" || roleFilter == "STAFF"))
         {
             query = query.Where(x => x.Role!.RoleCode == roleFilter);
         }
 
-        // NEW — branch filter
-        // null   → no filter
-        // > 0    → users assigned to that branch
-        // -1     → users with no branch (Unassigned)
         if (filter.BranchIdFilter.HasValue)
         {
             if (filter.BranchIdFilter.Value == -1)

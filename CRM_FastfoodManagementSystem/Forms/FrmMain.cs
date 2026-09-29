@@ -122,7 +122,10 @@ public partial class FrmMain : Form
         {
             AddMenuButton("Terms and Conditions",
                 () => ShowForm(new FrmTermsEditor(), "Terms and Conditions"));
+        }
 
+        if (UserSession.HasDataCollection && (UserSession.IsSuperAdmin || UserSession.IsAdmin))
+        {
             AddMenuButton("User Management",
                 () => ShowForm(new FrmUserManagement(), "User Management"));
         }
