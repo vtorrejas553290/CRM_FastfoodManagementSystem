@@ -43,7 +43,12 @@ public partial class FrmMain : Form
         lblWelcome.Text = $"{UserSession.FullName}\n{UserSession.RoleName}";
         BuildMenu();
 
-        if (UserSession.IsAdmin && UserSession.HasBusinessIntelligence)
+        if (UserSession.IsSuperAdmin)
+        {
+            ShowForm(new FrmSuperAdminBI(), "Business Intelligence");
+            HighlightMenuButton("Business Intelligence");
+        }
+        else if (UserSession.IsAdmin && UserSession.HasBusinessIntelligence)
         {
             ShowForm(new FrmBusinessIntelligence(), "Business Intelligence",
                 form => HookNavigation((FrmBusinessIntelligence)form));
@@ -85,14 +90,23 @@ public partial class FrmMain : Form
         pnlMenu.Controls.Clear();
         _activeButton = null;
 
-        if (UserSession.IsAdmin && UserSession.HasBusinessIntelligence)
+        if (UserSession.IsSuperAdmin)
+        {
+            AddMenuButton("Business Intelligence",
+                () => ShowForm(new FrmSuperAdminBI(), "Business Intelligence"));
+
+            AddMenuButton("Terms and Conditions",
+                () => ShowForm(new FrmSuperAdminTerms(), "Terms and Conditions"));
+        }
+
+        if (UserSession.IsAdmin && !UserSession.IsSuperAdmin && UserSession.HasBusinessIntelligence)
         {
             AddMenuButton("Business Intelligence",
                 () => ShowForm(new FrmBusinessIntelligence(), "Business Intelligence",
                     form => HookNavigation((FrmBusinessIntelligence)form)));
         }
 
-        if (UserSession.IsAdmin && !UserSession.HasBusinessIntelligence)
+        if (UserSession.IsAdmin && !UserSession.IsSuperAdmin && !UserSession.HasBusinessIntelligence)
         {
             AddMenuButton("Dashboard",
                 () => ShowForm(new FrmAdminDashboard(), "Dashboard"));
@@ -104,8 +118,7 @@ public partial class FrmMain : Form
                 () => ShowForm(new FrmManagerDashboard(), "Dashboard"));
         }
 
-        if (UserSession.HasDataCollection
-            && (UserSession.IsSuperAdmin || UserSession.IsAdmin))
+        if (UserSession.HasDataCollection && UserSession.IsAdmin && !UserSession.IsSuperAdmin)
         {
             AddMenuButton("Terms and Conditions",
                 () => ShowForm(new FrmTermsEditor(), "Terms and Conditions"));
@@ -181,7 +194,7 @@ public partial class FrmMain : Form
                 () => ShowForm(new FrmBranches(), "Branch Management"));
         }
 
-        if (UserSession.IsSuperAdmin || UserSession.IsAdmin)
+        if (UserSession.IsAdmin && !UserSession.IsSuperAdmin)
         {
             AddMenuButton("Activity Logs",
                 () => ShowForm(new FrmActivityLogs(), "Activity Logs"));
